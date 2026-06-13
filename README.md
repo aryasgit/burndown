@@ -5,6 +5,7 @@
 **A local, real-time cockpit for your Claude credit burn.**
 Burn rate · runway forecast · budget alerts — so you see "I'll run dry in 3 days" *before* it happens, not after.
 
+[![PyPI](https://img.shields.io/pypi/v/burndown?color=000&label=PyPI)](https://pypi.org/project/burndown/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-000.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-000.svg)](https://python.org)
 [![Zero dependencies](https://img.shields.io/badge/dependencies-0-000.svg)]()
@@ -26,7 +27,7 @@ and it never touches your prompts or code (see [SECURITY.md](docs/SECURITY.md)).
 ## Quickstart
 
 ```bash
-pipx install git+https://github.com/aryasgit/burndown.git   # works today (PyPI: `pipx install burndown` — soon)
+pipx install burndown        # from PyPI · or: pip install burndown
 burndown                     # snapshot of this period
 burndown budget 100          # set your monthly credit-pool budget → get a runway
 burndown scope programmatic  # guardian mode: meter just the credit pool

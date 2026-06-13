@@ -1042,7 +1042,7 @@
     <div class="install-grid reveal">
       <div class="install-left">
         <h3 class="tight">Install, run, and see your first readout — no config.</h3>
-        <p>Install with <span class="mono">pipx</span> straight from the repo and you get the <span class="mono">burndown</span> command on your PATH. Pure-Python stdlib, so there's nothing else to pull in. Run <span class="mono">burndown</span> and it reads the logs Claude Code is already keeping — set a budget with <span class="mono">burndown budget 100</span> to get a runway. The plain <span class="mono">pipx install burndown</span> from PyPI is coming soon; the command here is what works today.</p>
+        <p>Install with <span class="mono">pipx</span> straight from the repo and you get the <span class="mono">burndown</span> command on your PATH. Pure-Python stdlib, so there's nothing else to pull in. Run <span class="mono">burndown</span> and it reads the logs Claude Code is already keeping — set a budget with <span class="mono">burndown budget 100</span> to get a runway. It's on PyPI, so the same one line works on macOS, Linux, and Windows.</p>
         <ul>
           <li>Python 3.11+ · macOS, Linux, Windows · zero runtime dependencies</li>
           <li>Read-only on your logs · content-blind · re-runs change nothing</li>
@@ -1060,19 +1060,19 @@
         <div class="os-panel on" data-os="mac">
           <div class="term-row">
             <span class="pmpt">$</span>
-            <span class="cmd">pipx install git+https://github.com/aryasgit/burndown.git</span>
+            <span class="cmd">pipx install burndown</span>
             <button type="button" class="copy" aria-label="Copy command to clipboard">copy</button>
           </div>
           <div class="install-meta">
             <div><span class="k">No install</span>From a clone: <code>python -m burndown</code> — needs Python 3.11+, nothing else.</div>
-            <div><span class="k">Soon</span><code>pipx install burndown</code> from PyPI is on the way — the git+https command is what works today.</div>
+            <div><span class="k">Dev build</span>Bleeding edge from source: <code>pipx install git+https://github.com/aryasgit/burndown.git</code>.</div>
           </div>
         </div>
 
         <div class="os-panel" data-os="linux">
           <div class="term-row">
             <span class="pmpt">$</span>
-            <span class="cmd">pipx install git+https://github.com/aryasgit/burndown.git</span>
+            <span class="cmd">pipx install burndown</span>
             <button type="button" class="copy" aria-label="Copy command to clipboard">copy</button>
           </div>
           <div class="install-meta">
@@ -1084,12 +1084,12 @@
         <div class="os-panel" data-os="win">
           <div class="term-row">
             <span class="pmpt">PS&gt;</span>
-            <span class="cmd">pipx install git+https://github.com/aryasgit/burndown.git</span>
+            <span class="cmd">pipx install burndown</span>
             <button type="button" class="copy" aria-label="Copy command to clipboard">copy</button>
           </div>
           <div class="install-meta">
             <div><span class="k">PowerShell</span>Same command. Or from a clone: <code>python -m burndown</code>.</div>
-            <div><span class="k">Note</span>PyPI <code>pipx install burndown</code> coming soon.</div>
+            <div><span class="k">Also</span><code>pip install burndown</code> works too.</div>
           </div>
         </div>
       </div>
