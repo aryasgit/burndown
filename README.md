@@ -7,7 +7,7 @@ Burn rate · runway forecast · budget alerts — so you see "I'll run dry in 3 
 
 [![PyPI](https://img.shields.io/pypi/v/burndown?color=000&label=PyPI)](https://pypi.org/project/burndown/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-000.svg)](LICENSE)
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-000.svg)](https://python.org)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10+-000.svg)](https://python.org)
 [![Zero dependencies](https://img.shields.io/badge/dependencies-0-000.svg)]()
 [![100%25 local](https://img.shields.io/badge/runs-100%25%20local-000.svg)]()
 

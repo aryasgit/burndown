@@ -8,9 +8,20 @@ and never leaves your machine.
 from __future__ import annotations
 
 import os
-import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
+
+try:                                   # tomllib is in the stdlib on Python 3.11+
+    import tomllib as _toml
+    _TOML_ERROR = _toml.TOMLDecodeError
+
+    def _loads(text: str) -> dict:
+        return _toml.loads(text)
+except ModuleNotFoundError:            # Python 3.10 and earlier — zero-dependency fallback
+    _TOML_ERROR = ValueError
+
+    def _loads(text: str) -> dict:
+        return _loads_min(text)
 
 
 def config_path() -> Path:
@@ -50,14 +61,74 @@ class Config:
     pricing: dict = field(default_factory=dict)   # per-model rate overrides
 
 
+def _loads_min(text: str) -> dict:
+    """Tiny TOML reader for burndown's OWN config format, so Python 3.10 (which has
+    no stdlib `tomllib`) works with zero dependencies. Handles exactly what save()
+    writes: top-level `key = value` (string / number / bool / array-of-strings)
+    plus an optional `[pricing]` table of `key = array-of-floats`."""
+    out: dict = {}
+    section: dict = out
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line[0] == "[" and line[-1] == "]":
+            section = out.setdefault(line[1:-1].strip(), {})
+            continue
+        if "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        section[key.strip()] = _toml_value(val.strip())
+    return out
+
+
+def _toml_value(v: str):
+    if v[:1] == "[" and v[-1:] == "]":
+        body = v[1:-1].strip()
+        return [_toml_scalar(x) for x in _toml_split(body)] if body else []
+    return _toml_scalar(v)
+
+
+def _toml_scalar(v: str):
+    v = v.strip()
+    if len(v) >= 2 and v[0] == '"' and v[-1] == '"':
+        return v[1:-1].replace('\\"', '"').replace("\\\\", "\\")
+    if v == "true":
+        return True
+    if v == "false":
+        return False
+    try:
+        return float(v) if ("." in v or "e" in v.lower()) else int(v)
+    except ValueError:
+        return v
+
+
+def _toml_split(body: str) -> list:
+    """Split an array body on top-level commas (ignoring commas inside quotes)."""
+    parts: list = []
+    buf: list = []
+    in_q = False
+    for ch in body:
+        if ch == '"':
+            in_q = not in_q
+        if ch == "," and not in_q:
+            parts.append("".join(buf))
+            buf = []
+        else:
+            buf.append(ch)
+    if buf:
+        parts.append("".join(buf))
+    return parts
+
+
 def load() -> Config:
     cfg = Config()
     p = config_path()
     if not p.is_file():
         return cfg
     try:
-        data = tomllib.loads(p.read_text())
-    except (OSError, tomllib.TOMLDecodeError):
+        data = _loads(p.read_text())
+    except (OSError, _TOML_ERROR):
         return cfg
     if isinstance(data.get("log_dirs"), list) and data["log_dirs"]:
         cfg.log_dirs = [str(x) for x in data["log_dirs"]]

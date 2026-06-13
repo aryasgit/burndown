@@ -9,6 +9,10 @@
   confirmation instead of re-dumping the whole status readout (run `burndown` to see
   it). Chaining set-commands no longer floods the screen.
 - Clearer empty-project label: the no-`cwd` bucket reads `(no project)` instead of `—`.
+- **Python 3.10 support:** dropped the floor from 3.11 to 3.10 via a tiny zero-dep
+  TOML fallback (3.10 has no stdlib `tomllib`), so `pip install burndown` works for
+  the large 3.10 cohort instead of erroring with "no matching distribution". CI now
+  spans Python 3.10–3.13 across macOS / Linux / Windows.
 
 ## 0.1.0
 Initial vertical slice.

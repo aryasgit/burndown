@@ -8,7 +8,7 @@ version = "0.1.1"
 description = "A local, real-time cockpit for your Claude credit burn — burn rate, runway forecast, and budget alerts. Zero dependencies, nothing leaves your machine."
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 authors = [{ name = "Aryaman Gupta", email = "rayman3304@gmail.com" }]
 keywords = ["claude", "anthropic", "cost", "tokens", "budget", "cli", "local-first", "claude-code", "credits"]
 classifiers = [
@@ -18,6 +18,7 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
