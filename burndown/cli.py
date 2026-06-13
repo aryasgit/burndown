@@ -11,8 +11,21 @@ burndown/cli.py — command-line entry. Subcommands:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
+
+
+def _enable_windows_ansi() -> None:
+    """Turn on ANSI/VT processing on Windows 10+ so colors render in the terminal."""
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        k = ctypes.windll.kernel32
+        k.SetConsoleMode(k.GetStdHandle(-11), 7)  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
+    except Exception:
+        pass
 
 from . import config as cfgmod
 from . import report
@@ -112,6 +125,11 @@ def cmd_report(cfg, args):
     print(f"wrote {out}")
 
 
+def cmd_serve(cfg, args):
+    from . import serve as serve_mod
+    serve_mod.serve(port=args.port, open_browser=not args.no_open)
+
+
 def cmd_check(cfg, args):
     snap, fc = _snapshot(cfg)
     if fc.budget is None:
@@ -128,6 +146,7 @@ def cmd_check(cfg, args):
 
 
 def main(argv=None):
+    _enable_windows_ansi()
     p = argparse.ArgumentParser(
         prog="burndown",
         description="A local, real-time cockpit for your Claude credit burn. "
@@ -150,6 +169,9 @@ def main(argv=None):
     cu.add_argument("--symbol", help="currency symbol, e.g. ₹")
     r = sub.add_parser("report", help="write a self-contained HTML report")
     r.add_argument("--html", help="output path (default burndown-report.html)")
+    sv = sub.add_parser("serve", help="open a local web dashboard (127.0.0.1 only)")
+    sv.add_argument("--port", type=int, default=8787)
+    sv.add_argument("--no-open", action="store_true", help="don't auto-open the browser")
     sub.add_parser("check", help="exit non-zero if over/projected-over budget")
 
     args = p.parse_args(argv)
@@ -157,6 +179,6 @@ def main(argv=None):
     dispatch = {
         "status": cmd_status, "watch": cmd_watch, "budget": cmd_budget,
         "config": cmd_config, "scope": cmd_scope, "currency": cmd_currency,
-        "report": cmd_report, "check": cmd_check,
+        "report": cmd_report, "serve": cmd_serve, "check": cmd_check,
     }
     dispatch[args.cmd or "status"](cfg, args)

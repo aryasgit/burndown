@@ -7,14 +7,17 @@ never even reads.**
 
 ## Guarantees
 
-1. **No network — ever.** Burndown opens no sockets and imports no networking
-   module (`socket`, `http`, `urllib`, `ssl`, no third-party HTTP client). There
-   is no telemetry, no analytics, no update check, no "anonymous usage stats."
-   You can verify in one command:
+1. **No outbound network — ever; the only socket is a loopback dashboard.**
+   Burndown makes zero outbound connections: no telemetry, analytics, update
+   check, or HTTP client. The single networking import is the **optional**
+   `burndown serve` dashboard (stdlib `http.server`), which binds to
+   **127.0.0.1 only** — a local UI on your own machine, never reachable from the
+   network, off by default, serving a fully self-contained page. Verify there's
+   nothing outbound and no public bind:
    ```
-   grep -REn "^[[:space:]]*(import|from)[[:space:]]+(socket|ssl|urllib|http|httpx|requests)" burndown/
+   grep -REn "urllib|httpx|requests|socket\.|0\.0\.0\.0|telemetry|analytics" burndown/
    ```
-   (returns nothing — every import in the package is Python stdlib.)
+   (returns nothing — the only server binds 127.0.0.1, in serve.py.)
 
 2. **Content-blind.** The parser (`burndown/logs.py`) pulls only token-usage
    integers and minimal metadata: model name, timestamp, session id, the project

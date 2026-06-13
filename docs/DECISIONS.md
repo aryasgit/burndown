@@ -112,3 +112,23 @@ shown for context.
 **Why:** makes the credit-pool runway exact, grounded in a real log field.
 **Status:** done; verified on real data (programmatic $8.66 vs interactive
 $6,924 → guardian runway 128 days vs "all" mode 6932%-over-$100).
+
+### ADR-010 — Optional local dashboard binds 127.0.0.1 only
+**Context:** Non-terminal users (incl. the author, who works in Claude Desktop)
+want a visual dashboard, not just a CLI.
+**Decision:** `burndown serve` runs a stdlib `http.server` bound to **127.0.0.1**,
+serving a self-contained auto-refreshing page (no external scripts/fonts) that
+fetches a local `/data.json`. Opt-in; the only socket burndown ever opens; makes
+no outbound connections; never binds `0.0.0.0`.
+**Why:** a loopback UI is a local convenience, not a network service — keeps the
+"no data leaves your machine" promise while reaching a broader audience.
+**Status:** done; SECURITY.md guarantee #1 amended.
+
+### ADR-011 — Cross-platform from day one (macOS / Linux / Windows)
+**Context:** "Nothing fails on any OS." The tool reads OS-specific paths.
+**Decision:** auto-discover Claude's log dir per-platform; derive project names
+with `Path(...).name` (handles `\` and `/`); config under `%APPDATA%` on Windows /
+XDG on *nix; enable Windows VT so ANSI colors render. CI runs the suite on
+ubuntu + macos + windows × Python 3.11–3.13.
+**Why:** correctness on every OS must be proven, not assumed.
+**Status:** done; 9-cell CI matrix + smoke `burndown config` per OS.

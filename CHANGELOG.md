@@ -15,6 +15,11 @@ Initial vertical slice.
 - **Credit-pool guardian:** programmatic vs interactive split via the `entrypoint`
   field; `scope` config + `burndown scope programmatic` make the headline + runway
   meter just the June-2026 credit pool (ADR-009). Split always shown for context.
-- Test suite: 19 tests across parser/pricing/aggregate/forecast/currency, incl. a
-  structural content-blindness assertion. Zero runtime dependencies.
+- **Local web dashboard:** `burndown serve` → auto-refreshing page on 127.0.0.1
+  (loopback only, self-contained, no external resources; ADR-010).
+- **Cross-platform:** macOS/Linux/Windows log-dir auto-discovery, `%APPDATA%`
+  config on Windows, Windows ANSI enable, `\`-safe project names; CI matrix across
+  all three OSes × Python 3.11–3.13 (ADR-011).
+- Test suite: 23 tests across parser/pricing/aggregate/forecast/currency/scope/
+  dashboard, incl. a structural content-blindness assertion. Zero runtime deps.
 - Full decision log (8 ADRs) + threat model.

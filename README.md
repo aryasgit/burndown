@@ -66,6 +66,7 @@ No install? From a clone: `python -m burndown` (needs Python 3.11+, nothing else
 | `burndown currency INR [--rate R]` | show a second currency next to USD (static rate, no live fetch) |
 | `burndown check` | exit `0` ok · `1` projected-over · `2` over — wire it into your own pre-run hook / CI |
 | `burndown report [--html out.html]` | self-contained local HTML report (opens from `file://`, no server) |
+| `burndown serve [--port 8787]` | live **web dashboard** on `127.0.0.1` — local only, auto-refreshing (nice if you don't live in a terminal) |
 | `burndown config` | show config + verify which logs are being read |
 
 ## How it works
@@ -91,10 +92,10 @@ budget.
 
 ## Trust
 
-Zero dependencies · no network · read-only · content-blind · MIT.
+Zero dependencies · no outbound network (the optional dashboard is loopback-only) · read-only · content-blind · cross-platform (macOS/Linux/Windows) · MIT.
 Verify it yourself in one line:
 ```bash
-grep -REn "^[[:space:]]*(import|from)[[:space:]]+(socket|ssl|urllib|http|httpx|requests)" burndown/   # → nothing
+grep -REn "urllib|httpx|requests|socket\.|0\.0\.0\.0|telemetry" burndown/   # → nothing (the only server binds 127.0.0.1)
 ```
 
 Decisions are logged in [docs/DECISIONS.md](docs/DECISIONS.md); the threat model

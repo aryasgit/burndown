@@ -14,13 +14,26 @@ from pathlib import Path
 
 
 def config_path() -> Path:
-    base = os.environ.get("XDG_CONFIG_HOME") or (Path.home() / ".config")
+    if os.name == "nt":
+        base = os.environ.get("APPDATA") or (Path.home() / "AppData" / "Roaming")
+    else:
+        base = os.environ.get("XDG_CONFIG_HOME") or (Path.home() / ".config")
     return Path(base) / "burndown" / "config.toml"
 
 
 def default_log_dirs() -> list[str]:
-    p = Path.home() / ".claude" / "projects"
-    return [str(p)]
+    """Auto-discover Claude Code's log dir across macOS / Linux / Windows."""
+    home = Path.home()
+    cands = [home / ".claude" / "projects",
+             home / ".config" / "claude" / "projects"]
+    if os.name == "nt":
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            cands.append(Path(appdata) / "Claude" / "projects")
+    else:
+        cands.append(home / "Library" / "Application Support" / "Claude" / "projects")
+    found = [str(p) for p in cands if p.is_dir()]
+    return found or [str(home / ".claude" / "projects")]
 
 
 @dataclass
