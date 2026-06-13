@@ -14,5 +14,8 @@ venv/
 burndown-report.html
 *-report.html
 
+# internal strategy / session-context doc (never ship)
+BURNDOWN_STATUS.md
+
 # os
 .DS_Store

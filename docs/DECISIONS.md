@@ -73,3 +73,27 @@ for context.
 **Why:** a quiet month shouldn't hide that today you're burning 5× normal.
 **Status:** done for USD mode; token-mode recent-pace is a v0.2 refinement
 (currently uses period average — noted in `forecast.py`).
+
+### ADR-007 — Multi-currency via a static, configured FX rate (no live fetch)
+**Context:** Users outside the US (the author is in India) want spend shown in
+their own currency *alongside* USD — "according to current rates."
+**Decision:** Show a secondary currency (e.g. INR) next to USD everywhere, using
+a USD→X rate stored in config (`burndown currency INR`). Burndown does **not**
+fetch live rates — that would open a network connection and break the core
+guarantee.
+**Why:** the zero-network promise (ADR-002) is the product's trust story *and*
+the #1 user requirement; a convenience FX call isn't worth compromising it. The
+rate is a one-line config edit. A future **opt-in** `burndown fx` refresh — the
+lone, user-triggered, data-free network call — is on the roadmap but off by
+default.
+**Status:** done; defaults shipped for common currencies, rate overridable.
+
+### ADR-008 — v0.1 counts ALL Claude usage, not just programmatic (known gap)
+**Context:** The June-2026 credit pool meters *programmatic* usage (Agent SDK /
+`claude -p` / Actions) specifically; interactive Claude Code usage is on the
+regular subscription quota.
+**Decision:** v0.1 sums every billable event. The logs carry an `entrypoint`
+field that should let us split programmatic vs interactive — deferred to v0.2.
+**Why:** total burn is still useful and honest today; the programmatic-only
+filter is the right next refinement for the credit-pool use case.
+**Status:** documented limitation; v0.2 work item.

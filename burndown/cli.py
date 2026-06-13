@@ -19,6 +19,7 @@ from . import report
 from .aggregate import build_snapshot
 from .forecast import build_forecast
 from .logs import find_log_files, iter_events
+from .money import KNOWN_FX, money
 
 
 def _snapshot(cfg):
@@ -47,8 +48,7 @@ def cmd_watch(cfg, args):
 
 def cmd_budget(cfg, args):
     if args.amount is None:
-        unit = cfg.budget_unit
-        val = "not set" if cfg.budget is None else report._money(cfg.budget, unit)
+        val = "not set" if cfg.budget is None else money(cfg.budget, cfg)
         print(f"budget: {val} per {cfg.period} (resets day {cfg.reset_day})")
         return
     cfg.budget = float(args.amount)
@@ -59,6 +59,25 @@ def cmd_budget(cfg, args):
         cfg.reset_day = max(1, min(28, args.reset_day))
     path = cfgmod.save(cfg)
     print(f"saved → {path}\n")
+    cmd_status(cfgmod.load(), args)
+
+
+def cmd_currency(cfg, args):
+    if not args.code:
+        sec = f"{cfg.currency2} @ {cfg.fx_rate}" if cfg.currency2 else "USD only"
+        print(f"secondary currency: {sec}")
+        print(f"known codes: {', '.join(KNOWN_FX)}")
+        return
+    code = args.code.upper()
+    sym, default_rate = KNOWN_FX.get(code, (code + " ", 0.0))
+    cfg.currency2 = code
+    cfg.currency2_symbol = args.symbol or sym
+    cfg.fx_rate = args.rate if args.rate else default_rate
+    if not cfg.fx_rate:
+        print(f"unknown code {code} — pass a rate: `burndown currency {code} --rate <USD->{code}>`")
+        return
+    path = cfgmod.save(cfg)
+    print(f"saved → {path}  (showing USD + {code} @ {cfg.fx_rate}; static rate, no live fetch)\n")
     cmd_status(cfgmod.load(), args)
 
 
@@ -88,12 +107,10 @@ def cmd_check(cfg, args):
         print("no budget set — nothing to check")
         sys.exit(0)
     if fc.spent >= fc.budget:
-        print(f"OVER budget: {report._money(fc.spent, cfg.budget_unit)} of "
-              f"{report._money(fc.budget, cfg.budget_unit)}")
+        print(f"OVER budget: {money(fc.spent, cfg)} of {money(fc.budget, cfg)}")
         sys.exit(2)
     if fc.will_exceed:
-        print(f"projected to exceed before reset "
-              f"({report._money(fc.projected_period_total, cfg.budget_unit)})")
+        print(f"projected to exceed before reset ({money(fc.projected_period_total, cfg)})")
         sys.exit(1)
     print(f"within budget ({fc.pct_used:.0f}% used)")
     sys.exit(0)
@@ -114,6 +131,10 @@ def main(argv=None):
     b.add_argument("--period", choices=["monthly", "weekly", "daily"])
     b.add_argument("--reset-day", dest="reset_day", type=int, help="day-of-month the pool resets")
     sub.add_parser("config", help="show config + which logs are read")
+    cu = sub.add_parser("currency", help="show USD + a second currency (e.g. INR)")
+    cu.add_argument("code", nargs="?", help="currency code, e.g. INR")
+    cu.add_argument("--rate", type=float, help="USD -> code conversion (static, no live fetch)")
+    cu.add_argument("--symbol", help="currency symbol, e.g. ₹")
     r = sub.add_parser("report", help="write a self-contained HTML report")
     r.add_argument("--html", help="output path (default burndown-report.html)")
     sub.add_parser("check", help="exit non-zero if over/projected-over budget")
@@ -122,6 +143,7 @@ def main(argv=None):
     cfg = cfgmod.load()
     dispatch = {
         "status": cmd_status, "watch": cmd_watch, "budget": cmd_budget,
-        "config": cmd_config, "report": cmd_report, "check": cmd_check,
+        "config": cmd_config, "currency": cmd_currency, "report": cmd_report,
+        "check": cmd_check,
     }
     dispatch[args.cmd or "status"](cfg, args)
