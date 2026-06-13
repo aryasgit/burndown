@@ -26,12 +26,13 @@ and it never touches your prompts or code (see [SECURITY.md](docs/SECURITY.md)).
 ## Quickstart
 
 ```bash
-pipx install burndown        # or: pip install burndown
+pipx install git+https://github.com/aryasgit/burndown.git   # works today (PyPI: `pipx install burndown` — soon)
 burndown                     # snapshot of this period
 burndown budget 100          # set your monthly credit-pool budget → get a runway
 burndown scope programmatic  # guardian mode: meter just the credit pool
 burndown currency INR        # show INR next to USD (static rate, no live fetch)
-burndown watch               # live dashboard
+burndown watch               # live terminal dashboard …
+burndown serve               # … or a web dashboard at http://127.0.0.1:8787
 ```
 
 No install? From a clone: `python -m burndown` (needs Python 3.11+, nothing else).
