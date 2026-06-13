@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>burndown — know your Claude runway before you hit zero.</title>
+<meta name="description" content="A 100%-local CLI (+ opt-in loopback web dashboard) that reads the usage logs Claude Code already writes and shows your credit burn in real time: burn rate, runway forecast, and an over-budget check. Built for the Jun-15 2026 programmatic credit pool. Zero deps, no outbound network, read-only, content-blind. MIT.">
+<meta property="og:title" content="burndown — know your Claude runway before you hit zero.">
+<meta property="og:description" content="A 100%-local fuel gauge for Claude credit burn: burn rate, runway forecast, over-budget check. Reads the logs Claude Code already writes. Zero deps, no network, read-only, content-blind. MIT.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@200;300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0a;
+    --bg-2:#101010;
+    --line:#1a1a1a;
+    --line-2:#262626;
+    --line-3:#3a3a3a;
+    --text:#f4f4f4;
+    --text-2:#cfcfcf;
+    --dim:#8a8a8a;
+    --faint:#7a7a7a;
+    --ghost:#2c2c2c;
+    --live:#3dd07a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    font-size:15px;line-height:1.55;
+    overflow-x:hidden;
+    cursor:default;
+  }
+  a{color:inherit}
+  ::selection{background:var(--text);color:var(--bg)}
+
+  /* Typography utilities */
+  .tight{font-family:'Inter Tight',sans-serif;letter-spacing:-.025em}
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+  .dim{color:var(--dim)}
+  .faint{color:var(--faint)}
+  .label{
+    font-family:'Inter Tight',sans-serif;font-weight:400;
+    font-size:.7rem;color:var(--dim);
+    letter-spacing:.01em;line-height:1.4;
+  }
+  .cap{
+    font-family:'Inter Tight',sans-serif;font-weight:500;
+    font-size:.68rem;color:var(--faint);
+    text-transform:uppercase;letter-spacing:.16em;
+  }
+
+  /* Container */
+  .wrap{max-width:1480px;margin:0 auto;padding:0 2.5rem}
+  @media(max-width:900px){.wrap{padding:0 1.5rem}}
+
+  /* ─────────── NAV ─────────── */
+  .nav{
+    display:flex;
+    align-items:flex-start;
+    gap:3rem;
+    padding:1.4rem 0;
+  }
+  .brand{
+    font-family:'Inter Tight',sans-serif;font-weight:500;
+    font-size:1.85rem;letter-spacing:-.055em;line-height:.95;
+    color:var(--text);text-decoration:none;
+    display:inline-flex;align-items:baseline;gap:.45rem;
+  }
+  .brand:hover{opacity:.85}
+  .brand .glyph{
+    display:inline-block;width:1.2rem;height:1.2rem;
+    border:1.5px solid var(--text);border-radius:3px;
+    position:relative;transform:translateY(.16em);overflow:hidden;
+  }
+  .brand .glyph::after{
+    content:"";position:absolute;left:0;right:0;bottom:0;
+    height:38%;background:var(--text);
+  }
+  .nav-cols{
+    display:flex;
+    gap:2.5rem;padding-top:.35rem;
+  }
+  .nav-col{display:flex;flex-direction:column;gap:.35rem}
+  .nav-col a{
+    color:var(--text);text-decoration:none;
+    font-size:.95rem;line-height:1.5;
+    transition:opacity .15s;
+  }
+  .nav-col a:hover{opacity:.55}
+  .nav-col .muted{color:var(--faint)}
+  .nav-cta-wrap{display:flex;justify-content:flex-end;align-items:flex-start;padding-top:.25rem;margin-left:auto}
+  .nav-cta{
+    border:1px solid var(--text-2);color:var(--text);
+    padding:.55rem 1.5rem;border-radius:999px;
+    font-size:.95rem;text-decoration:none;
+    transition:background .15s,color .15s;
+  }
+  .nav-cta:hover{background:var(--text);color:var(--bg)}
+  @media(max-width:900px){
+    .nav{gap:1rem}
+    .nav-cols{display:none}
+  }
+
+  /* ─────────── PHILOSOPHY ROW ─────────── */
+  .philo{
+    display:grid;
+    grid-template-columns:1.1fr 1.6fr 1fr;
+    gap:2.5rem;
+    padding:3rem 0;
+    align-items:start;
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+  }
+  .philo .label{margin-bottom:1.1rem}
+  .philo .l p{
+    color:var(--dim);font-size:.92rem;line-height:1.55;
+    max-width:34ch;
+  }
+  .philo .l p + p{margin-top:.85rem}
+  .philo .c{display:flex;flex-direction:column;gap:.45rem}
+  .philo .c .row{display:flex;align-items:center;gap:.55rem;color:var(--text);font-size:.92rem}
+  .philo .c .row.dim{color:var(--dim)}
+  .philo .c .row.dim .pulse{background:var(--live);box-shadow:0 0 10px rgba(61,208,122,.6)}
+  .pulse{
+    width:7px;height:7px;border-radius:50%;background:var(--text);display:inline-block;
+    animation:pulseAnim 2s ease-in-out infinite;
+  }
+  @keyframes pulseAnim{0%,100%{opacity:1}50%{opacity:.4}}
+  .philo .r{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;color:var(--dim);font-size:.92rem;line-height:1.55}
+  .philo .r .side-dot{width:7px;height:7px;border-radius:50%;background:var(--text);margin-top:.45em;flex-shrink:0}
+  @media(max-width:900px){
+    .philo{grid-template-columns:1fr;gap:1.5rem;padding:2rem 0}
+    .philo .l p{max-width:none}
+  }
+
+  /* ─────────── HERO ─────────── */
+  .hero{padding:3.2rem 0 3.5rem;position:relative;overflow:hidden;border-top:1px solid var(--line)}
+  .hero h1{
+    font-family:'Inter Tight',sans-serif;
+    font-weight:500;
+    font-size:clamp(2.4rem,6vw,6rem);
+    line-height:.93;
+    letter-spacing:-.05em;
+    color:var(--text);
+    margin:0;
+  }
+  .hero h1 .lite{font-weight:300;color:var(--text-2)}
+  .hero h1 .dim{color:var(--dim);font-weight:300}
+  .hero h1 .ul{
+    position:relative;display:inline-block;
+  }
+  .hero h1 .ul::after{
+    content:"";position:absolute;left:0;right:0;bottom:.08em;
+    height:2px;background:var(--text);
+    transform-origin:left;animation:underline 1.4s .6s cubic-bezier(.65,0,.35,1) both;
+  }
+  @keyframes underline{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+  /* Hero crosshair tracker */
+  .crosshair{position:fixed;pointer-events:none;z-index:5;opacity:0;transition:opacity .25s}
+  .crosshair.on{opacity:1}
+  .crosshair .v{position:fixed;top:0;bottom:0;width:1px;background:var(--line-2)}
+  .crosshair .h{position:fixed;left:0;right:0;height:1px;background:var(--line-2)}
+  .crosshair .px{
+    position:fixed;font-family:'JetBrains Mono',monospace;
+    font-size:.65rem;color:var(--faint);
+    padding:.15rem .4rem;background:var(--bg);
+    border:1px solid var(--line-2);transform:translate(8px,8px);
+  }
+
+  /* ─────────── HERO FOOTER GRID ─────────── */
+  .hero-foot{
+    display:grid;grid-template-columns:1.35fr 1fr 1fr;
+    gap:2.5rem;padding-top:2.6rem;align-items:end;
+  }
+  /* Terminal readout mock — real `burndown` output */
+  .term-mock{
+    background:#0c0d0c;border:1px solid var(--line-2);border-radius:7px;
+    overflow:hidden;font-family:'JetBrains Mono',ui-monospace,monospace;
+    box-shadow:0 14px 44px rgba(0,0,0,.45);
+  }
+  .term-mock .tm-bar{
+    display:flex;align-items:center;gap:.5rem;
+    padding:.6rem .85rem;background:#080808;border-bottom:1px solid var(--line-2);
+  }
+  .term-mock .tm-dot{width:11px;height:11px;border-radius:50%;display:inline-block}
+  .tm-dot.r{background:#ff5f56}.tm-dot.y{background:#ffbd2e}.tm-dot.g{background:#27c93f}
+  .term-mock .tm-file{margin-left:.55rem;font-size:.72rem;color:var(--dim);letter-spacing:.01em}
+  .term-mock .tm-body{
+    padding:.8rem 0 .95rem;font-size:.73rem;line-height:1.85;
+    color:var(--text-2);white-space:nowrap;overflow:hidden;
+  }
+  .term-mock .tm-body .ln{padding:0 1rem;display:block;overflow:hidden;text-overflow:ellipsis}
+  .term-mock .tm-body .ln.hl{background:rgba(61,208,122,.08);box-shadow:inset 2px 0 0 var(--live)}
+  .term-mock .tm-body .ln.gap{height:.5rem;line-height:.5rem}
+  .term-mock .pmpt{color:var(--faint)}
+  .term-mock .cmd{color:var(--text)}
+  .term-mock .lbl{color:var(--dim)}
+  .term-mock .num{color:var(--text)}
+  .term-mock .ok{color:var(--live)}
+  .term-mock .dimv{color:var(--faint)}
+  .term-mock .gfill{color:var(--text)}
+  .term-mock .gempty{color:var(--ghost)}
+  .term-mock .spark{color:var(--dim);letter-spacing:.06em}
+
+  .hero-aux{display:flex;flex-direction:column;gap:.85rem;font-size:.92rem;color:var(--dim)}
+  .hero-aux .label{color:var(--faint);margin:0}
+  .hero-aux strong{color:var(--text);font-weight:500}
+  .start-row{
+    display:flex;flex-direction:column;gap:.7rem;
+  }
+  .start-row .label{margin:0}
+  .start-row .startbox{
+    display:flex;align-items:center;gap:.7rem;
+    border-bottom:1px solid var(--text);padding:.45rem 0;
+  }
+  .start-row .startbox span{font-family:'Inter Tight';font-weight:400;color:var(--text);font-size:1.05rem}
+  .start-row .startbox .arrow{margin-left:auto;color:var(--text);font-size:1.1rem;transition:transform .2s}
+  .start-row a:hover .arrow{transform:translateX(4px)}
+  .start-row a{display:block;text-decoration:none}
+  @media(max-width:900px){
+    .hero-foot{grid-template-columns:1fr;gap:2rem}
+  }
+
+  /* ─────────── MARQUEE BAND ─────────── */
+  .marq{
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    overflow:hidden;padding:1.15rem 0;
+    position:relative;background:#070707;
+  }
+  .marq .lane{
+    display:flex;gap:3.5rem;white-space:nowrap;
+    animation:slide 60s linear infinite;width:max-content;
+    font-family:'JetBrains Mono',monospace;
+    font-size:.95rem;color:var(--text-2);
+    letter-spacing:.01em;
+  }
+  .marq:hover .lane{animation-play-state:paused}
+  .marq .lane span{display:inline-flex;align-items:center;gap:.7rem}
+  .marq .lane span::before{content:"";width:5px;height:5px;background:var(--faint);border-radius:50%}
+  @keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  /* ─────────── SECTION FRAME ─────────── */
+  section{padding:6.5rem 0;border-top:1px solid var(--line);position:relative}
+  .sec-head{
+    display:grid;grid-template-columns:1.1fr 2.6fr;
+    gap:2.5rem;align-items:start;
+    margin-bottom:4rem;
+  }
+  .sec-head .l{display:flex;flex-direction:column;gap:.55rem;padding-top:.55rem}
+  .sec-head .l .num{color:var(--text);font-size:.95rem;font-family:'Inter Tight'}
+  .sec-head .l .cap{margin-top:.2rem}
+  .sec-head h2{
+    font-family:'Inter Tight',sans-serif;
+    font-size:clamp(2.2rem,5.5vw,4.4rem);
+    font-weight:500;letter-spacing:-.035em;line-height:1.02;
+    max-width:20ch;color:var(--text);
+  }
+  .sec-head h2 .dim{color:var(--dim);font-weight:300}
+  .sec-head h2 .lite{color:var(--text-2);font-weight:300}
+  @media(max-width:900px){
+    .sec-head{grid-template-columns:1fr;gap:1.2rem;margin-bottom:2.5rem}
+  }
+
+  /* ─────────── LOOP / ACCORDION ─────────── */
+  .loop{
+    display:flex;flex-direction:column;
+    border-top:1px solid var(--line-2);
+  }
+  .loop .step{
+    border-bottom:1px solid var(--line-2);
+    cursor:pointer;
+    transition:background .2s;
+  }
+  .loop .step:hover{background:var(--bg-2)}
+  .wall .tool:focus-visible{outline:1px solid var(--text-2);outline-offset:-2px;background:var(--bg-2)}
+  .loop .step:focus-visible{outline:1px solid var(--text-2);outline-offset:-2px;background:var(--bg-2)}
+  .loop .step .top{
+    display:grid;
+    grid-template-columns:60px 1.4fr 2fr 1.3fr 40px;
+    gap:1.5rem;align-items:center;
+    padding:1.5rem 0;
+  }
+  .loop .step .n{
+    font-family:'Inter Tight';font-weight:300;
+    font-size:1.95rem;color:var(--text);
+    letter-spacing:-.02em;
+  }
+  .loop .step .who{font-family:'Inter Tight';color:var(--text-2);font-size:1rem}
+  .loop .step .who small{display:block;color:var(--faint);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;margin-top:.18em}
+  .loop .step .verb{color:var(--text);font-size:1.05rem;font-family:'Inter Tight'}
+  .loop .step .mcp{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--dim);text-align:right}
+  .loop .step .caret{
+    color:var(--faint);text-align:right;
+    transition:transform .2s,color .15s;
+    font-family:'Inter Tight';font-size:1.5rem;font-weight:200;line-height:1;
+  }
+  .loop .step:hover .caret{color:var(--text)}
+  .loop .step.open .caret{transform:rotate(45deg);color:var(--text)}
+  .loop .step .body{
+    max-height:0;overflow:hidden;
+    transition:max-height .35s cubic-bezier(.2,.8,.2,1);
+  }
+  .loop .step.open .body{max-height:320px}
+  .loop .step .body-inner{
+    padding:.4rem 0 1.7rem;
+    display:grid;grid-template-columns:60px 1fr;gap:1.5rem;
+  }
+  .loop .step .body-inner > div:last-child{
+    color:var(--dim);font-size:.95rem;line-height:1.6;
+    max-width:64ch;
+  }
+  .loop .step .body-inner strong{color:var(--text-2);font-weight:500}
+  @media(max-width:900px){
+    .loop .step .top{grid-template-columns:40px 1fr 30px;gap:1rem}
+    .loop .step .verb,.loop .step .mcp{display:none}
+    .loop .step .body-inner{grid-template-columns:40px 1fr;gap:1rem}
+  }
+
+  /* ─────────── STATS ─────────── */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:2rem;padding-top:1rem}
+  .stat{
+    border-top:1px solid var(--line-2);
+    padding:1.5rem 0 0;
+    display:flex;flex-direction:column;gap:.55rem;
+  }
+  .stat .big{
+    font-family:'Inter Tight',sans-serif;font-weight:400;
+    font-size:clamp(2.4rem,5vw,3.8rem);
+    line-height:.95;letter-spacing:-.035em;
+    color:var(--text);
+  }
+  .stat .big sup{font-size:.42em;color:var(--dim);font-weight:400;vertical-align:.65em;margin-left:.1em}
+  .stat .lab{color:var(--dim);font-size:.85rem;line-height:1.45}
+  .stat .lab strong{color:var(--text-2);font-weight:500}
+  @media(max-width:900px){.stats{grid-template-columns:1fr 1fr;gap:1.5rem}}
+
+  /* ─────────── COMMAND WALL ─────────── */
+  .wall-grid{
+    display:grid;
+    grid-template-columns:1.8fr 1fr;
+    gap:3rem;align-items:start;
+  }
+  .wall{
+    display:grid;grid-template-columns:repeat(3,1fr);
+    gap:0;
+  }
+  .wall .tool{
+    border-top:1px solid var(--line-2);
+    border-right:1px solid var(--line-2);
+    padding:1.3rem 1.1rem 1.4rem;
+    cursor:pointer;
+    position:relative;
+    transition:background .15s;
+  }
+  .wall .tool:nth-child(3n){border-right:none}
+  .wall .tool:hover{background:var(--bg-2)}
+  .wall .tool.active{background:#151515}
+  .wall .tool .nm{
+    font-family:'JetBrains Mono',monospace;font-size:.84rem;
+    color:var(--text);font-weight:500;
+    overflow-wrap:break-word;
+  }
+  .wall .tool .kind{
+    font-family:'Inter Tight';font-size:.65rem;color:var(--faint);
+    text-transform:uppercase;letter-spacing:.14em;margin-top:.5rem;
+  }
+  .wall .tool .kind.read{color:var(--dim)}
+  .wall .tool .kind.live{color:var(--live)}
+  .wall .tool .kind.set{color:var(--text-2)}
+  .wall .tool .kind.guard{color:var(--text)}
+  .wall-info{
+    border-top:1px solid var(--line-2);
+    padding:1.3rem 0 0;
+    position:sticky;top:1.5rem;
+  }
+  .wall-info .cap{margin-bottom:.85rem}
+  .wall-info .nm{
+    font-family:'JetBrains Mono',monospace;font-size:1.1rem;
+    color:var(--text);font-weight:500;margin-bottom:1rem;
+    word-break:break-word;
+  }
+  .wall-info .desc{color:var(--text-2);font-size:.95rem;line-height:1.6}
+  .wall-info .sig{
+    margin-top:1.2rem;padding-top:1.2rem;border-top:1px dashed var(--line-2);
+    font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--dim);
+    line-height:1.6;word-break:break-word;
+  }
+  @media(max-width:900px){
+    .wall-grid{grid-template-columns:1fr;gap:1.5rem}
+    .wall{grid-template-columns:repeat(2,1fr)}
+    .wall .tool:nth-child(3n){border-right:1px solid var(--line-2)}
+    .wall .tool:nth-child(2n){border-right:none}
+  }
+
+  /* ─────────── DASHBOARD SECTION ─────────── */
+  .editor-grid{
+    display:grid;grid-template-columns:1fr 1fr;
+    gap:3rem;align-items:start;
+  }
+  .dash-mock{
+    background:#0b0b0b;border:1px solid var(--line-2);
+    overflow:hidden;border-radius:6px;
+    box-shadow:0 14px 40px rgba(0,0,0,.4);
+  }
+  .dash-mock .db-bar{
+    display:flex;align-items:center;gap:.6rem;
+    padding:.55rem .8rem;background:#080808;border-bottom:1px solid var(--line-2);
+  }
+  .dash-mock .db-dots{display:flex;gap:.35rem}
+  .dash-mock .db-dots span{width:9px;height:9px;border-radius:50%;background:var(--ghost)}
+  .dash-mock .db-url{
+    flex:1;font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--dim);
+    background:#0c0d0c;border:1px solid var(--line);border-radius:5px;padding:.32rem .65rem;
+    display:flex;align-items:center;
+  }
+  .dash-mock .db-url .lock{color:var(--live);margin-right:.45rem;font-size:.62rem}
+  .dash-mock .db-screen{padding:1.5rem 1.5rem 1.7rem;font-family:'JetBrains Mono',monospace}
+  .dash-mock .db-h{display:flex;justify-content:space-between;align-items:baseline;color:var(--faint);font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;margin-bottom:1.1rem}
+  .dash-mock .db-h .live{display:inline-flex;align-items:center;gap:.4rem;color:var(--live)}
+  .dash-mock .db-h .live .pulse{width:6px;height:6px;background:var(--live);box-shadow:0 0 8px rgba(61,208,122,.6)}
+  .dash-mock .db-amt{font-family:'Inter Tight';font-size:2.4rem;font-weight:400;letter-spacing:-.03em;color:var(--text);line-height:1}
+  .dash-mock .db-amt small{font-size:.42em;color:var(--dim);margin-left:.4em;letter-spacing:0}
+  .dash-mock .db-bar-track{height:8px;background:var(--ghost);border-radius:4px;overflow:hidden;margin:1rem 0 .5rem}
+  .dash-mock .db-bar-fill{height:100%;width:9%;background:var(--text);border-radius:4px}
+  .dash-mock .db-sub{color:var(--dim);font-size:.7rem;display:flex;justify-content:space-between}
+  .dash-mock .db-tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;margin-top:1.4rem;background:var(--line-2);border:1px solid var(--line-2)}
+  .dash-mock .db-tile{background:#0b0b0b;padding:.85rem .8rem}
+  .dash-mock .db-tile .k{color:var(--faint);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;margin-bottom:.4rem}
+  .dash-mock .db-tile .v{color:var(--text);font-size:.95rem;font-family:'Inter Tight'}
+  .dash-mock .db-tile .v.ok{color:var(--live)}
+
+  .editor-side{display:flex;flex-direction:column;gap:1.4rem}
+  .editor-side .pt{
+    display:grid;grid-template-columns:64px 1fr;gap:1.2rem;
+    border-top:1px solid var(--line-2);padding:1.3rem 0;
+  }
+  .editor-side .pt:first-child{border-top:none;padding-top:.3rem}
+  .editor-side .pt .kbd{
+    display:inline-flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;font-size:.66rem;
+    color:var(--text);min-width:64px;height:36px;padding:0 .4rem;
+    border:1px solid var(--line-3);text-align:center;
+  }
+  .editor-side .pt h3{
+    font-family:'Inter Tight';font-weight:500;font-size:1.05rem;
+    color:var(--text);margin-bottom:.4rem;letter-spacing:-.01em;
+  }
+  .editor-side .pt p{color:var(--dim);font-size:.9rem;line-height:1.55}
+  @media(max-width:900px){.editor-grid{grid-template-columns:1fr;gap:2rem}}
+
+  /* ─────────── TRUST SECTION ─────────── */
+  .trust-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:3rem;align-items:start}
+  .trust-left h3{font-family:'Inter Tight';font-weight:400;font-size:2rem;letter-spacing:-.025em;line-height:1.05;margin-bottom:1.2rem}
+  .trust-left p{color:var(--dim);font-size:.95rem;line-height:1.6;max-width:38ch}
+  .checks{list-style:none;display:flex;flex-direction:column;gap:0;border-top:1px solid var(--line-2)}
+  .checks li{
+    display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:baseline;
+    padding:1.05rem 0;border-bottom:1px solid var(--line-2);
+    color:var(--text-2);font-size:.95rem;
+  }
+  .checks li .ck{color:var(--live);font-family:'JetBrains Mono',monospace;font-size:.9rem}
+  .checks li strong{color:var(--text);font-weight:500}
+  .checks li small{display:block;color:var(--dim);font-size:.85rem;margin-top:.2rem;line-height:1.5}
+  .audit{margin-top:1.6rem}
+  .audit .cap{margin-bottom:.7rem}
+
+  /* ─────────── INSTALL / OS TABS ─────────── */
+  .install-grid{
+    display:grid;grid-template-columns:1fr 1.4fr;
+    gap:3rem;align-items:start;
+  }
+  .install-left h3{
+    font-family:'Inter Tight';font-weight:400;
+    font-size:2rem;letter-spacing:-.025em;
+    line-height:1.05;margin-bottom:1.2rem;
+  }
+  .install-left p{color:var(--dim);font-size:.95rem;line-height:1.6;max-width:40ch}
+  .install-left p .mono{color:var(--text-2)}
+  .install-left ul{
+    list-style:none;margin-top:1.5rem;padding:0;
+    display:flex;flex-direction:column;gap:.4rem;
+  }
+  .install-left ul li{
+    display:flex;gap:.7rem;color:var(--text-2);font-size:.9rem;line-height:1.5;
+  }
+  .install-left ul li::before{content:"—";color:var(--faint)}
+  .os-tabs{display:flex;border-bottom:1px solid var(--line-2)}
+  .os-tabs button{
+    background:none;border:none;color:var(--dim);
+    font-family:'Inter Tight';font-size:.95rem;font-weight:400;
+    padding:.85rem 1.4rem .85rem 0;
+    margin-right:1.5rem;cursor:pointer;
+    position:relative;transition:color .15s;
+    letter-spacing:-.01em;
+  }
+  .os-tabs button:hover{color:var(--text-2)}
+  .os-tabs button.on{color:var(--text)}
+  .os-tabs button.on::after{
+    content:"";position:absolute;left:0;right:1.4rem;bottom:-1px;
+    height:1px;background:var(--text);
+  }
+  .os-panel{display:none;padding-top:1.5rem}
+  .os-panel.on{display:block}
+  .term-row{
+    display:flex;align-items:center;gap:.8rem;
+    background:#080808;border:1px solid var(--line-2);
+    padding:1rem 1.15rem;
+    font-family:'JetBrains Mono',monospace;font-size:.85rem;
+    color:var(--text);overflow-x:auto;white-space:nowrap;
+  }
+  .term-row .pmpt{color:var(--faint);user-select:none}
+  .term-row .cmd{flex:1}
+  .term-row .copy{
+    background:var(--text);color:var(--bg);border:none;
+    font-family:'Inter Tight';font-size:.72rem;font-weight:500;
+    padding:.45rem 1rem;cursor:pointer;
+    transition:opacity .15s;letter-spacing:.02em;flex-shrink:0;
+  }
+  .term-row .copy:hover{opacity:.85}
+  .install-meta{
+    display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;
+    margin-top:1.5rem;font-size:.85rem;color:var(--dim);line-height:1.55;
+  }
+  .install-meta .k{color:var(--faint);font-size:.65rem;text-transform:uppercase;letter-spacing:.14em;margin-bottom:.45rem;display:block}
+  .install-meta a{color:var(--text-2);border-bottom:1px dashed var(--line-3);text-decoration:none}
+  .install-meta a:hover{color:var(--text);border-bottom-color:var(--text)}
+  .install-meta code{font-family:'JetBrains Mono',monospace;font-size:.85em;color:var(--text);background:#080808;padding:.05em .35em;border:1px solid var(--line)}
+  @media(max-width:900px){
+    .install-grid,.trust-grid{grid-template-columns:1fr;gap:2rem}
+    .install-meta{grid-template-columns:1fr}
+  }
+
+  /* ─────────── BIG QUOTE ─────────── */
+  .quote{padding:9rem 0;text-align:left;border-top:1px solid var(--line)}
+  .quote h2{
+    font-family:'Inter Tight',sans-serif;
+    font-size:clamp(2.5rem,7vw,6.5rem);
+    font-weight:400;letter-spacing:-.04em;line-height:1;
+    max-width:18ch;color:var(--text);
+  }
+  .quote h2 .dim{color:var(--dim);font-weight:300}
+  .quote .sig{
+    display:flex;gap:.8rem;align-items:center;margin-top:2.5rem;
+    color:var(--dim);font-size:.85rem;
+  }
+  .quote .sig .line{flex:0 0 60px;height:1px;background:var(--line-3)}
+
+  /* ─────────── FOOTER (giant wordmark) ─────────── */
+  footer{border-top:1px solid var(--line);padding:5rem 0 1.5rem;position:relative;overflow:hidden}
+  .foot-grid{
+    display:grid;grid-template-columns:1fr 1fr 1.3fr;
+    gap:3rem;margin-bottom:5rem;
+  }
+  .foot-col h5{
+    font-family:'Inter Tight';font-weight:500;font-size:.95rem;
+    color:var(--text);margin-bottom:1rem;
+  }
+  .foot-col a{color:var(--text);text-decoration:none;display:block;font-size:.95rem;margin-bottom:.35rem;transition:opacity .15s}
+  .foot-col a:hover{opacity:.55}
+  .foot-col a small{color:var(--faint);font-size:.85em}
+  .foot-col .lead-p{color:var(--dim);font-size:.9rem;line-height:1.6}
+  .wordmark{
+    position:relative;line-height:.78;
+    margin:1rem 0 2rem;
+  }
+  .wordmark .w{
+    font-family:'Inter Tight',sans-serif;font-weight:500;
+    font-size:clamp(4rem,18vw,16rem);
+    letter-spacing:-.06em;color:var(--text);
+    display:block;line-height:.78;
+  }
+  .wordmark .cut{
+    position:absolute;right:5%;top:10%;
+    width:20%;aspect-ratio:1/1.15;
+    background:#0c0d0c;border:1px solid var(--line-2);
+    overflow:hidden;
+  }
+  .wordmark .cut::before{
+    content:"";position:absolute;inset:0;
+    background:
+      radial-gradient(circle at 30% 30%, rgba(61,208,122,.08), transparent 60%),
+      linear-gradient(180deg, transparent 55%, rgba(0,0,0,.6));
+  }
+  .wordmark .cut::after{
+    content:"$ burndown\Arunway 128.1 days\A✓ lasts the period";
+    white-space:pre;
+    position:absolute;left:.7rem;bottom:.7rem;
+    font-family:'JetBrains Mono',monospace;font-size:.55rem;
+    color:var(--dim);line-height:1.7;
+  }
+  .foot-bar{
+    display:flex;justify-content:space-between;align-items:center;
+    padding-top:1.5rem;border-top:1px solid var(--line);
+    color:var(--faint);font-size:.78rem;font-family:'Inter Tight';
+    letter-spacing:.05em;text-transform:uppercase;
+    flex-wrap:wrap;gap:1rem;
+  }
+  .foot-bar a{color:var(--dim);text-decoration:none;margin-left:1.5rem}
+  .foot-bar a:hover{color:var(--text)}
+  @media(max-width:900px){
+    .foot-grid{grid-template-columns:1fr;gap:2rem}
+    .wordmark .cut{display:none}
+  }
+
+  /* ─────────── REVEAL ─────────── */
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--line-3);border-radius:4px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--dim)}
+
+  /* ─────────── PHONE: smaller type + tighter spacing ─────────── */
+  @media(max-width:640px){
+    html,body{overflow-x:hidden}
+    .crosshair,.marq,.nav-cta,.wordmark{display:none}
+
+    body{font-size:14px}
+    .wrap{padding:0 1.15rem}
+    section{padding:3.25rem 0}
+    .sec-head{margin-bottom:1.6rem}
+    .sec-head h2{font-size:1.9rem;max-width:none}
+
+    .brand{font-size:2rem}
+    .nav{padding:1.1rem 0}
+    .nav-cta{padding:.5rem 1.1rem;font-size:.9rem}
+
+    .philo{padding:1.5rem 0;gap:1rem}
+
+    .hero{padding:2.3rem 0 2.5rem}
+    .hero h1{font-size:clamp(2rem,10.5vw,2.9rem);letter-spacing:-.04em}
+    .hero-foot{padding-top:1.7rem;gap:1.5rem}
+    .term-mock .tm-body{font-size:.6rem;line-height:1.75}
+    .term-mock .tm-file{font-size:.6rem}
+    .hero-aux{font-size:.88rem}
+    .start-row .startbox span{font-size:.95rem}
+
+    .loop .step .top{padding:1.05rem 0}
+    .loop .step .n{font-size:1.5rem}
+
+    .stats{gap:1rem}
+    .stat{padding-top:1rem}
+    .stat .big{font-size:2rem}
+
+    .checks li{font-size:.88rem}
+
+    .install-left h3,.trust-left h3{font-size:1.5rem}
+    .term-row{font-size:.7rem;padding:.8rem .85rem;gap:.5rem}
+    .term-row .copy{padding:.4rem .7rem;font-size:.66rem}
+
+    .quote{padding:3.25rem 0}
+    .quote h2{font-size:1.95rem;max-width:none}
+    .quote .sig{margin-top:1.4rem}
+
+    footer{padding:2.5rem 0 1.25rem}
+    .foot-grid{gap:1.5rem;margin-bottom:2.25rem}
+    .foot-bar{font-size:.7rem;gap:.6rem}
+    .foot-bar a{margin-left:1rem}
+  }
+</style>
+</head>
+<body>
+
+<div class="crosshair" id="ch">
+  <div class="v" id="chV"></div>
+  <div class="h" id="chH"></div>
+  <div class="px" id="chPx">0,0</div>
+</div>
+
+<div class="wrap">
+
+  <!-- ─────────── NAV ─────────── -->
+  <header class="nav">
+    <a href="#" class="brand">
+      <span class="glyph"></span>burndown
+    </a>
+    <nav class="nav-cols">
+      <div class="nav-col">
+        <a href="#loop">The burn loop</a>
+        <a href="#stats">Why</a>
+        <a href="#commands">Commands</a>
+      </div>
+      <div class="nav-col">
+        <a href="#dashboard">Dashboard</a>
+        <a href="#trust">Trust</a>
+        <a href="https://github.com/aryasgit/burndown" target="_blank">GitHub <small class="faint">↗</small></a>
+      </div>
+    </nav>
+    <div class="nav-cta-wrap">
+      <a href="#install" class="nav-cta">Install</a>
+    </div>
+  </header>
+
+  <!-- ─────────── HERO ─────────── -->
+  <section class="hero">
+    <h1 class="tight">
+      Know your <span class="dim">runway</span><br>
+      before you <span class="ul">hit</span><br>
+      <span class="lite">zero.</span>
+    </h1>
+
+    <div class="hero-foot">
+      <!-- the literal `burndown` readout -->
+      <div class="term-mock">
+        <div class="tm-bar">
+          <span class="tm-dot r"></span><span class="tm-dot y"></span><span class="tm-dot g"></span>
+          <span class="tm-file">burndown — credit pool</span>
+        </div>
+        <div class="tm-body">
+          <span class="ln"><span class="pmpt">$</span> <span class="cmd">burndown</span></span>
+          <span class="ln gap"></span>
+          <span class="ln"><span class="lbl">monthly · resets Jul 01 · scope: programmatic</span></span>
+          <span class="ln"><span class="num">$8.66</span> <span class="lbl">/ $100.00</span>&nbsp;&nbsp;<span class="gfill">██</span><span class="gempty">░░░░░░░░░░░░░░░░░░░░░░░░</span>&nbsp;<span class="lbl">9%</span></span>
+          <span class="ln gap"></span>
+          <span class="ln"><span class="lbl">programmatic</span> <span class="num">$8.66</span> <span class="dimv">(credit pool)</span></span>
+          <span class="ln"><span class="lbl">interactive&nbsp;</span> <span class="num">$7,064.61</span> <span class="dimv">(≈ value at API rates)</span></span>
+          <span class="ln gap"></span>
+          <span class="ln"><span class="lbl">burn rate&nbsp;&nbsp;</span> <span class="num">$0.71/day</span> <span class="dimv">(last 24h)</span></span>
+          <span class="ln hl"><span class="lbl">runway&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> <span class="num">128.1 days</span> <span class="dimv">(Oct 19)</span> <span class="ok">✓ lasts the period</span></span>
+          <span class="ln"><span class="lbl">projected&nbsp;&nbsp;</span> <span class="num">$21.39</span> <span class="dimv">by reset</span></span>
+          <span class="ln gap"></span>
+          <span class="ln"><span class="lbl">last 14d&nbsp;&nbsp;&nbsp;</span> <span class="spark">▁▂▁▁█▁▁▁▁▂▁▁▁▁</span></span>
+          <span class="ln"><span class="dimv">75 msgs · 1,979,456 tokens · 100% local, nothing sent</span></span>
+        </div>
+      </div>
+      <div class="hero-aux">
+        <span class="label">What it does</span>
+        <span><strong>Reads the usage logs Claude Code already writes.</strong> Turns the token counts into a burn rate, a runway forecast — &ldquo;dry in N days&rdquo; — and an over-budget check. Token counts only, never your message text. 100% local.</span>
+        <span class="label" style="margin-top:.5rem">Why now</span>
+        <span><strong>On Jun 15, 2026 Anthropic split programmatic Claude usage into its own monthly credit pool</strong> that can run dry mid-month, on its own. burndown is the gauge for it — and for your interactive usage too.</span>
+      </div>
+      <div class="start-row">
+        <span class="label">Start</span>
+        <a href="#install">
+          <div class="startbox">
+            <span>One-line install</span>
+            <span class="arrow">→</span>
+          </div>
+        </a>
+        <a href="https://github.com/aryasgit/burndown" target="_blank">
+          <div class="startbox">
+            <span>Read the source</span>
+            <span class="arrow">→</span>
+          </div>
+        </a>
+        <a href="#trust">
+          <div class="startbox">
+            <span>Audit it in one grep</span>
+            <span class="arrow">↓</span>
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── PHILOSOPHY ROW ─────────── -->
+  <section class="philo">
+    <div class="l">
+      <div class="label">burndown — a fuel gauge, not a bank statement</div>
+      <p>A small command-line tool that lives next to Claude on your laptop. It reads the usage logs Claude Code already writes, prices the tokens with a table you control, and tells you the rate you're burning at and the day you run dry. It meters local Claude Code usage — if a flow doesn't write those logs, burndown can't see it.</p>
+      <p>Existing tools show what you already spent, after the fact. This one shows the rate and the runway before you hit zero. Nothing leaves the machine. Zero runtime dependencies, read-only on your logs, content-blind by design. MIT.</p>
+    </div>
+    <div class="c">
+      <div class="row dim"><span class="pulse"></span>Local-only · <span id="localTime">00:00:00</span></div>
+      <div class="row">Reads <span class="mono" style="color:var(--dim)">~/.claude</span> logs <span style="color:var(--faint)">·</span> sends nothing <span style="color:var(--faint)">·</span> MIT</div>
+    </div>
+    <div class="r">
+      <div>
+        <span>Live · v0.1</span><br>
+        <span style="color:var(--faint)">CLI + opt-in 127.0.0.1 dashboard</span>
+      </div>
+      <span class="side-dot"></span>
+    </div>
+  </section>
+
+</div><!-- /wrap -->
+
+<!-- ─────────── MARQUEE ─────────── -->
+<div class="marq">
+  <div class="lane">
+    <span>burn rate from the last 24h</span>
+    <span>runway: the day you hit zero</span>
+    <span>programmatic vs interactive, split by entrypoint</span>
+    <span>100% local — nothing sent anywhere</span>
+    <span>reads token counts, never message text</span>
+    <span>the only socket is 127.0.0.1</span>
+    <span>estimated prices, exact runway math</span>
+    <span>zero runtime dependencies · pure stdlib</span>
+    <span>burndown check → wire it into your own hook</span>
+    <span>MIT · Python 3.11+</span>
+    <!-- duplicate for seamless loop -->
+    <span>burn rate from the last 24h</span>
+    <span>runway: the day you hit zero</span>
+    <span>programmatic vs interactive, split by entrypoint</span>
+    <span>100% local — nothing sent anywhere</span>
+    <span>reads token counts, never message text</span>
+    <span>the only socket is 127.0.0.1</span>
+    <span>estimated prices, exact runway math</span>
+    <span>zero runtime dependencies · pure stdlib</span>
+    <span>burndown check → wire it into your own hook</span>
+    <span>MIT · Python 3.11+</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ─────────── 01 · THE BURN LOOP ─────────── -->
+  <section id="loop">
+    <div class="sec-head reveal">
+      <div class="l">
+        <div class="num">01</div>
+        <div class="cap">The burn loop</div>
+      </div>
+      <h2 class="tight">From the logs Claude already writes to a runway you can act on — <span class="dim">read-only, content-blind, every step on your machine.</span></h2>
+    </div>
+
+    <div class="loop reveal">
+      <div class="step">
+        <div class="top">
+          <div class="n">01</div>
+          <div class="who">Claude Code<small>writes logs</small></div>
+          <div class="verb">Logs every assistant message it sends.</div>
+          <div class="mcp">~/.claude/projects/**/*.jsonl</div>
+          <div class="caret">+</div>
+        </div>
+        <div class="body"><div class="body-inner"><div></div><div>Every assistant message lands in a JSONL line with a <span class="mono">usage</span> block — input, output, cache-write and cache-read token counts, plus the model and entrypoint. Claude Code writes these whether or not burndown is installed; burndown never asks it to log anything extra.</div></div></div>
+      </div>
+      <div class="step">
+        <div class="top">
+          <div class="n">02</div>
+          <div class="who">burndown<small>read-only</small></div>
+          <div class="verb">Reads the token counts. Never the text.</div>
+          <div class="mcp">content-blind</div>
+          <div class="caret">+</div>
+        </div>
+        <div class="body"><div class="body-inner"><div></div><div>It opens those files read-only and reads only the token counts and metadata — model, timestamp, entrypoint. It never reads the message body. And it only sees these logs: if a flow doesn't write to <span class="mono">~/.claude</span>, burndown can't see it — it meters local Claude Code usage, not everything.</div></div></div>
+      </div>
+      <div class="step">
+        <div class="top">
+          <div class="n">03</div>
+          <div class="who">burndown<small>classifies</small></div>
+          <div class="verb">Splits each event programmatic vs interactive.</div>
+          <div class="mcp">scope=programmatic</div>
+          <div class="caret">+</div>
+        </div>
+        <div class="body"><div class="body-inner"><div></div><div>Each event is tagged by its entrypoint — SDK / headless / CI runs are <strong>programmatic</strong>, your editor and desktop sessions are <strong>interactive</strong>. <span class="mono">burndown scope programmatic</span> meters just the Jun-2026 credit pool that can run dry on its own.</div></div></div>
+      </div>
+      <div class="step">
+        <div class="top">
+          <div class="n">04</div>
+          <div class="who">burndown<small>prices</small></div>
+          <div class="verb">Prices the tokens with a table you control.</div>
+          <div class="mcp">per-model · estimated</div>
+          <div class="caret">+</div>
+        </div>
+        <div class="body"><div class="body-inner"><div></div><div>A configurable per-model rate table turns token counts into a dollar figure and rolls them into the current billing period. Prices are <strong>estimated</strong> — they only scale the dollar figure; the burn-rate and runway math underneath is exact. Prefer not to trust a price? Run with <span class="mono">--tokens</span> and forecast in raw tokens instead.</div></div></div>
+      </div>
+      <div class="step">
+        <div class="top">
+          <div class="n">05</div>
+          <div class="who">burndown<small>projects</small></div>
+          <div class="verb">Burn rate from 24h → a runway date.</div>
+          <div class="mcp">runway 128.1d → Oct 19</div>
+          <div class="caret">+</div>
+        </div>
+        <div class="body"><div class="body-inner"><div></div><div>Burn rate is computed from the <strong>last 24 hours</strong> — not a lifetime average — and projected against your remaining budget: a number of days and the actual date. &ldquo;<span class="mono">✓ lasts the period</span>&rdquo; or &ldquo;runs dry before reset.&rdquo; The whole point is to see the rate <em>before</em> the pool is empty.</div></div></div>
+      </div>
+      <div class="step">
+        <div class="top">
+          <div class="n">06</div>
+          <div class="who">You<small>the check</small></div>
+          <div class="verb">Read it, watch it, or check it in CI.</div>
+          <div class="mcp">exit 0 / 1 / 2</div>
+          <div class="caret">+</div>
+        </div>
+        <div class="body"><div class="body-inner"><div></div><div>Glance at <span class="mono">burndown</span>, leave <span class="mono">watch</span> open in a pane, or wire <span class="mono">burndown check</span> into your own hook — it exits 0 (ok), 1 (projected over), or 2 (already over). It's a signal you act on; it never blocks or cancels a run.</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── 02 · STATS ─────────── -->
+  <section id="stats">
+    <div class="sec-head reveal">
+      <div class="l">
+        <div class="num">02</div>
+        <div class="cap">What you get</div>
+      </div>
+      <h2 class="tight">A rate and a runway. <span class="dim">Read before you hit zero, not a receipt after.</span></h2>
+    </div>
+    <div class="stats reveal">
+      <div class="stat">
+        <div class="big">24<sup>h</sup></div>
+        <div class="lab"><strong>Burn rate from the last 24 hours.</strong> Not a lifetime average — the gauge tracks how hard you're going now, projected to a runway date.</div>
+      </div>
+      <div class="stat">
+        <div class="big">0<sup>deps</sup></div>
+        <div class="lab"><strong>Pure Python stdlib.</strong> No packages to vet, nothing to pull from a registry — nothing to audit but the source. Python 3.11+ and you're done.</div>
+      </div>
+      <div class="stat">
+        <div class="big">0<sup>network</sup></div>
+        <div class="lab"><strong>No outbound network.</strong> Read-only and content-blind — token counts only, never your prompts. The only socket is the optional 127.0.0.1 dashboard. Nothing leaves your computer.</div>
+      </div>
+      <div class="stat">
+        <div class="big">~70<sup>×</sup></div>
+        <div class="lab"><strong>Value received, measured on one machine.</strong> ~$7,000 of API-equivalent value from a $100 plan ≈ 70× the plan price. burndown measures what you got — not what you owe.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── 03 · COMMAND WALL ─────────── -->
+  <section id="commands">
+    <div class="sec-head reveal">
+      <div class="l">
+        <div class="num">03</div>
+        <div class="cap">The commands</div>
+      </div>
+      <h2 class="tight">Nine commands <span class="dim">to read the burn, watch it live, and check it in CI.</span></h2>
+    </div>
+
+    <div class="wall-grid reveal">
+      <div class="wall" id="wall"><!-- populated by JS --></div>
+      <aside class="wall-info" id="wallInfo">
+        <div class="cap">Select a command</div>
+        <div class="nm">burndown status</div>
+        <div class="desc">One-shot snapshot of this period: spend vs budget, burn rate, runway, projected total, top projects, and a 14-day sparkline. The default when you run burndown with no arguments.</div>
+        <div class="sig">burndown · burndown status</div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ─────────── 04 · DASHBOARD ─────────── -->
+  <section id="dashboard">
+    <div class="sec-head reveal">
+      <div class="l">
+        <div class="num">04</div>
+        <div class="cap">In the browser</div>
+      </div>
+      <h2 class="tight">Don't live in a terminal?<br><span class="lite">Run serve and watch the gauge in a tab, on loopback.</span></h2>
+    </div>
+
+    <div class="editor-grid reveal">
+      <div class="dash-mock">
+        <div class="db-bar">
+          <div class="db-dots"><span></span><span></span><span></span></div>
+          <div class="db-url"><span class="lock">●</span>127.0.0.1:8787</div>
+        </div>
+        <div class="db-screen">
+          <div class="db-h">
+            <span>burndown · monthly · scope programmatic</span>
+            <span class="live"><span class="pulse"></span>live</span>
+          </div>
+          <div class="db-amt">$8.66 <small>/ $100.00 · 9% used</small></div>
+          <div class="db-bar-track"><div class="db-bar-fill"></div></div>
+          <div class="db-sub"><span>burn $0.71/day · last 24h</span><span>projected $21.39</span></div>
+          <div class="db-tiles">
+            <div class="db-tile"><div class="k">Runway</div><div class="v ok">128 days</div></div>
+            <div class="db-tile"><div class="k">Resets</div><div class="v">Oct 19</div></div>
+            <div class="db-tile"><div class="k">Top project</div><div class="v">memcon</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="editor-side">
+        <div class="pt">
+          <span class="kbd">serve</span>
+          <div>
+            <h3>One command, local only</h3>
+            <p>burndown serve opens an auto-refreshing dashboard at http://127.0.0.1:8787. Same numbers as the terminal — spend, burn rate, runway, top projects — laid out to read at a glance, for people who run Claude through the desktop app.</p>
+          </div>
+        </div>
+        <div class="pt">
+          <span class="kbd">:8787</span>
+          <div>
+            <h3>Loopback only</h3>
+            <p>Bound to 127.0.0.1, never 0.0.0.0. It's a local UI, not a network service — nothing on your network or the internet can reach it. This is the only socket burndown ever opens; everything else is read-and-print.</p>
+          </div>
+        </div>
+        <div class="pt">
+          <span class="kbd">file://</span>
+          <div>
+            <h3>Or no server at all</h3>
+            <p>Prefer not to open a socket? burndown report writes a self-contained HTML file you open from file:// — no server, no fonts or CDN, no telemetry, nothing fetched. The file holds aggregate numbers only — no conversation content — and is git-ignored by default.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── 05 · TRUST ─────────── -->
+  <section id="trust">
+    <div class="sec-head reveal">
+      <div class="l">
+        <div class="num">05</div>
+        <div class="cap">Trust, verified</div>
+      </div>
+      <h2 class="tight">It watches your spend.<br><span class="lite">It earns its place on your machine.</span></h2>
+    </div>
+
+    <div class="trust-grid reveal">
+      <div class="trust-left">
+        <h3 class="tight">A spend tool you don't have to take on faith.</h3>
+        <p>Most "free" tools earn their keep with telemetry. burndown earns yours by having nothing to hide: it's small, it's pure-stdlib, and the whole thing reads in one sitting. Verify every claim below from the source — in one line.</p>
+      </div>
+      <div>
+        <ul class="checks">
+          <li><span class="ck">✓</span><span><strong>Zero runtime dependencies.</strong><small>Pure Python standard library. No third-party packages, nothing pulled from a registry — nothing to audit but the source.</small></span></li>
+          <li><span class="ck">✓</span><span><strong>No outbound network.</strong><small>It makes no HTTP calls and opens no outbound connections. The only socket is the optional <span class="mono">serve</span> dashboard, bound to 127.0.0.1.</small></span></li>
+          <li><span class="ck">✓</span><span><strong>Read-only on your logs.</strong><small>It opens log files for reading and never writes to them. Re-runs change nothing on disk.</small></span></li>
+          <li><span class="ck">✓</span><span><strong>Content-blind.</strong><small>It reads token counts and metadata only — never the message body. It can't leak your prompts or code because it never reads them.</small></span></li>
+        </ul>
+        <div class="audit">
+          <div class="cap">Audit it yourself</div>
+          <div class="term-row">
+            <span class="pmpt">$</span>
+            <span class="cmd">grep -REn "urllib|httpx|requests|telemetry|analytics|0\.0\.0\.0|socket\.socket|create_connection|\.connect\(" burndown/</span>
+            <button type="button" class="copy" aria-label="Copy command to clipboard">copy</button>
+          </div>
+          <div class="install-meta">
+            <div><span class="k">Result</span>Nothing — the only socket binds 127.0.0.1. The whole tool is auditable in one read.</div>
+            <div><span class="k">Threat model</span><a href="https://github.com/aryasgit/burndown/blob/main/docs/SECURITY.md" target="_blank">docs/SECURITY.md</a> · <a href="https://github.com/aryasgit/burndown/blob/main/docs/DECISIONS.md" target="_blank">ADRs</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── 06 · INSTALL ─────────── -->
+  <section id="install">
+    <div class="sec-head reveal">
+      <div class="l">
+        <div class="num">06</div>
+        <div class="cap">Install</div>
+      </div>
+      <h2 class="tight">One line. <span class="dim">Nothing to vet.</span></h2>
+    </div>
+
+    <div class="install-grid reveal">
+      <div class="install-left">
+        <h3 class="tight">Install, run, and see your first readout — no config.</h3>
+        <p>Install with <span class="mono">pipx</span> straight from the repo and you get the <span class="mono">burndown</span> command on your PATH. Pure-Python stdlib, so there's nothing else to pull in. Run <span class="mono">burndown</span> and it reads the logs Claude Code is already keeping — set a budget with <span class="mono">burndown budget 100</span> to get a runway. The plain <span class="mono">pipx install burndown</span> from PyPI is coming soon; the command here is what works today.</p>
+        <ul>
+          <li>Python 3.11+ · macOS, Linux, Windows · zero runtime dependencies</li>
+          <li>Read-only on your logs · content-blind · re-runs change nothing</li>
+          <li>From a clone, no install: <span class="mono">python -m burndown</span></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="os-tabs" role="tablist">
+          <button class="on" data-os="mac">macOS</button>
+          <button data-os="linux">Linux</button>
+          <button data-os="win">Windows</button>
+        </div>
+
+        <div class="os-panel on" data-os="mac">
+          <div class="term-row">
+            <span class="pmpt">$</span>
+            <span class="cmd">pipx install git+https://github.com/aryasgit/burndown.git</span>
+            <button type="button" class="copy" aria-label="Copy command to clipboard">copy</button>
+          </div>
+          <div class="install-meta">
+            <div><span class="k">No install</span>From a clone: <code>python -m burndown</code> — needs Python 3.11+, nothing else.</div>
+            <div><span class="k">Soon</span><code>pipx install burndown</code> from PyPI is on the way — the git+https command is what works today.</div>
+          </div>
+        </div>
+
+        <div class="os-panel" data-os="linux">
+          <div class="term-row">
+            <span class="pmpt">$</span>
+            <span class="cmd">pipx install git+https://github.com/aryasgit/burndown.git</span>
+            <button type="button" class="copy" aria-label="Copy command to clipboard">copy</button>
+          </div>
+          <div class="install-meta">
+            <div><span class="k">Works on</span>Ubuntu · Debian · Fedora · Arch · WSL2. Python 3.11–3.13, 3-OS CI.</div>
+            <div><span class="k">Source</span><a href="https://github.com/aryasgit/burndown" target="_blank">github.com/aryasgit/burndown</a> — read it before you run it.</div>
+          </div>
+        </div>
+
+        <div class="os-panel" data-os="win">
+          <div class="term-row">
+            <span class="pmpt">PS&gt;</span>
+            <span class="cmd">pipx install git+https://github.com/aryasgit/burndown.git</span>
+            <button type="button" class="copy" aria-label="Copy command to clipboard">copy</button>
+          </div>
+          <div class="install-meta">
+            <div><span class="k">PowerShell</span>Same command. Or from a clone: <code>python -m burndown</code>.</div>
+            <div><span class="k">Note</span>PyPI <code>pipx install burndown</code> coming soon.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── QUOTE ─────────── -->
+  <section class="quote">
+    <h2 class="tight">Know your runway<br>before you <span class="dim">hit zero.</span></h2>
+    <div class="sig">
+      <div class="line"></div>
+      <div>Open source · MIT · since 2026</div>
+    </div>
+  </section>
+
+</div><!-- /wrap -->
+
+<!-- ─────────── FOOTER ─────────── -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-col">
+        <h5>Repo</h5>
+        <a href="https://github.com/aryasgit/burndown" target="_blank">GitHub <small>↗</small></a>
+        <a href="https://github.com/aryasgit/burndown/blob/main/README.md" target="_blank">README <small>↗</small></a>
+        <a href="https://github.com/aryasgit/burndown/blob/main/docs/SECURITY.md" target="_blank">Security / threat model <small>↗</small></a>
+        <a href="https://github.com/aryasgit/burndown/issues" target="_blank">Issues <small>↗</small></a>
+      </div>
+      <div class="foot-col">
+        <h5>Verify</h5>
+        <a href="https://github.com/aryasgit/burndown/blob/main/pyproject.toml" target="_blank">Zero dependencies <small>↗</small></a>
+        <a href="#trust">The one-line audit grep</a>
+        <a href="https://github.com/aryasgit/burndown/blob/main/docs/DECISIONS.md" target="_blank">Decisions (ADRs) <small>↗</small></a>
+        <a href="https://github.com/aryasgit/burndown/blob/main/LICENSE" target="_blank">License · MIT <small>↗</small></a>
+      </div>
+      <div class="foot-col">
+        <h5>Note</h5>
+        <p class="lead-p">On Jun 15, 2026 Anthropic split programmatic Claude usage into its own monthly credit pool that can run dry mid-month, independent of your subscription. Tools like ccusage show what you already spent. burndown shows the rate and the runway before zero — 100% local.</p>
+      </div>
+    </div>
+
+    <div class="wordmark">
+      <span class="w">burndown</span>
+      <div class="cut"></div>
+    </div>
+
+    <div class="foot-bar">
+      <div>© 2026 burndown · MIT · by Aryaman Gupta</div>
+      <div>
+        <a href="https://github.com/aryasgit/burndown">github</a>
+        <a href="#trust">verify</a>
+        <a href="#install">install</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ── Live local clock in philosophy row ─────────────
+  function tick(){
+    var d = new Date();
+    var pad = function(n){ return n < 10 ? '0'+n : ''+n; };
+    var t = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+    var el = document.getElementById('localTime');
+    if (el) el.textContent = t;
+  }
+  tick(); setInterval(tick, 1000);
+
+  // ── Hero cursor crosshair ──────────────────────────
+  (function(){
+    var hero = document.querySelector('.hero');
+    var ch = document.getElementById('ch');
+    var v = document.getElementById('chV'), h = document.getElementById('chH'), px = document.getElementById('chPx');
+    if (!hero || !ch) return;
+    hero.addEventListener('mouseenter', function(){ ch.classList.add('on'); });
+    hero.addEventListener('mouseleave', function(){ ch.classList.remove('on'); });
+    hero.addEventListener('mousemove', function(e){
+      v.style.left = e.clientX + 'px';
+      h.style.top = e.clientY + 'px';
+      px.style.left = e.clientX + 'px';
+      px.style.top = e.clientY + 'px';
+      px.textContent = e.clientX + ',' + e.clientY;
+    });
+  })();
+
+  // ── Loop accordion ─────────────────────────────────
+  document.querySelectorAll('.loop .step').forEach(function(step){
+    step.addEventListener('click', function(){
+      step.classList.toggle('open');
+    });
+  });
+
+  // ── Command wall ───────────────────────────────────
+  var COMMANDS = [
+    { n:'burndown status',   k:'read',  d:'One-shot snapshot of this period: spend vs budget, burn rate, runway, projected total, top projects, and a 14-day sparkline. The default when you run burndown with no arguments.', sig:'burndown · burndown status' },
+    { n:'burndown watch',    k:'live',  d:'Live terminal dashboard. Re-reads your logs every few seconds and redraws in place — leave it open in a split pane while you work and watch the runway move.', sig:'burndown watch [--interval 5]' },
+    { n:'burndown serve',    k:'live',  d:'Opt-in web dashboard on 127.0.0.1, auto-refreshing. Loopback only, self-contained, no external resources. For people who use Claude Desktop or don’t live in a terminal.', sig:'burndown serve [--port 8787]' },
+    { n:'burndown budget',   k:'set',   d:'Set the budget your runway is measured against, in dollars. Pass --tokens to forecast against a token budget and skip pricing entirely. --reset-day sets when the period rolls over.', sig:'burndown budget <amount> [--tokens] [--reset-day N]' },
+    { n:'burndown scope',    k:'guard', d:'The credit-pool guardian. ‘programmatic’ meters just the Jun-2026 credit pool — runway against your pool budget alone. ‘all’ and ‘interactive’ scopes also exist.', sig:'burndown scope programmatic | interactive | all' },
+    { n:'burndown currency', k:'set',   d:'Show a second currency next to USD (e.g. INR) using a static configured rate. No live fetch — that would mean a network call, which burndown never makes. Override with --rate.', sig:'burndown currency INR [--rate R]' },
+    { n:'burndown check',    k:'read',  d:'Exit code only, for automation: 0 = ok, 1 = projected over budget, 2 = already over. Wire it into your own pre-run hook or CI step. A signal you act on — it never blocks or cancels a run.', sig:'burndown check' },
+    { n:'burndown report',   k:'read',  d:'Write a self-contained local HTML report you can open straight from file:// — no server, no external resources. Good for saving or sharing a snapshot of the period.', sig:'burndown report [--html out.html]' },
+    { n:'burndown config',   k:'read',  d:'Show the active config — price table, budget, scope, reset day — and verify exactly which log files are being read. The ‘is it seeing my usage?’ tool, and only that.', sig:'burndown config' }
+  ];
+  var KIND_LABEL = { read:'Read', live:'Live', set:'Set', guard:'Guardian' };
+  var wall = document.getElementById('wall');
+  var info = document.getElementById('wallInfo');
+  if (wall && info){
+    COMMANDS.forEach(function(t){
+      var div = document.createElement('div');
+      div.className = 'tool';
+      div.setAttribute('role', 'button');
+      div.tabIndex = 0;
+      div.setAttribute('aria-label', t.n + ' — ' + (KIND_LABEL[t.k] || t.k) + ' command');
+      div.innerHTML = '<div class="nm">' + t.n + '</div><div class="kind ' + t.k + '">' + (KIND_LABEL[t.k] || t.k) + '</div>';
+      function show(){
+        document.querySelectorAll('.wall .tool').forEach(function(x){ x.classList.remove('active'); });
+        div.classList.add('active');
+        info.innerHTML =
+          '<div class="cap">' + (KIND_LABEL[t.k] || t.k) + ' command</div>' +
+          '<div class="nm">' + t.n + '</div>' +
+          '<div class="desc">' + t.d + '</div>' +
+          '<div class="sig">' + t.sig + '</div>';
+      }
+      div.addEventListener('mouseenter', show);
+      div.addEventListener('focus', show);
+      div.addEventListener('click', show);
+      div.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(); } });
+      wall.appendChild(div);
+    });
+  }
+
+  // ── Install OS tabs ────────────────────────────────
+  function detectOS(){
+    var p = (navigator.userAgent + ' ' + (navigator.platform || '')).toLowerCase();
+    if (p.indexOf('win') !== -1) return 'win';
+    if (p.indexOf('mac') !== -1 || p.indexOf('iphone') !== -1 || p.indexOf('ipad') !== -1) return 'mac';
+    return 'linux';
+  }
+  function setOS(os){
+    document.querySelectorAll('.os-tabs button').forEach(function(b){
+      b.classList.toggle('on', b.dataset.os === os);
+    });
+    document.querySelectorAll('.os-panel').forEach(function(p){
+      p.classList.toggle('on', p.dataset.os === os);
+    });
+  }
+  setOS(detectOS());
+  document.querySelectorAll('.os-tabs button').forEach(function(b){
+    b.addEventListener('click', function(){ setOS(b.dataset.os); });
+  });
+
+  // ── Copy buttons ───────────────────────────────────
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var cmd = btn.parentElement.querySelector('.cmd').textContent.trim();
+      navigator.clipboard.writeText(cmd).then(function(){
+        var prev = btn.textContent;
+        btn.textContent = 'copied';
+        setTimeout(function(){ btn.textContent = prev; }, 1200);
+      });
+    });
+  });
+
+  // ── Reveal on scroll ───────────────────────────────
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){ if (e.isIntersecting) e.target.classList.add('in'); });
+  }, { threshold:.1, rootMargin:'0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+</script>
+</body>
+</html>

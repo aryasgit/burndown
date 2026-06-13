@@ -96,7 +96,7 @@ budget.
 Zero dependencies · no outbound network (the optional dashboard is loopback-only) · read-only · content-blind · cross-platform (macOS/Linux/Windows) · MIT.
 Verify it yourself in one line:
 ```bash
-grep -REn "urllib|httpx|requests|socket\.|0\.0\.0\.0|telemetry" burndown/   # → nothing (the only server binds 127.0.0.1)
+grep -REn "urllib|httpx|requests|telemetry|analytics|0\.0\.0\.0|socket\.socket|create_connection|\.connect\(" burndown/   # → nothing (the only socket binds 127.0.0.1)
 ```
 
 Decisions are logged in [docs/DECISIONS.md](docs/DECISIONS.md); the threat model

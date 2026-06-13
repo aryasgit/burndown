@@ -1,0 +1,7 @@
+{
+  "cleanUrls": true,
+  "redirects": [
+    { "source": "/burndown", "destination": "/", "permanent": true },
+    { "source": "/burndown/:path*", "destination": "/", "permanent": true }
+  ]
+}

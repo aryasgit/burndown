@@ -7,8 +7,9 @@ SECURITY POSTURE (see docs/SECURITY.md — these are guarantees, not preferences
   * CONTENT-BLIND.  We extract ONLY token-usage numbers + minimal metadata
     (model, timestamp, session id, project folder NAME, git branch). We never
     read, keep, or transmit the actual prompt/response text in `message.content`.
-  * NO NETWORK.  Nothing in this module — or anywhere in this package — opens a
-    socket. The tool cannot leak what it never sends.
+  * NO NETWORK.  This module makes no network calls. The only socket in the whole
+    package is the opt-in loopback dashboard (serve), bound to 127.0.0.1; the tool
+    cannot leak what it never sends.
   * DEFENSIVE.  Malformed lines, missing fields, and unreadable files are skipped,
     never fatal.
 

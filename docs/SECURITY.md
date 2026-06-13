@@ -15,7 +15,7 @@ never even reads.**
    network, off by default, serving a fully self-contained page. Verify there's
    nothing outbound and no public bind:
    ```
-   grep -REn "urllib|httpx|requests|socket\.|0\.0\.0\.0|telemetry|analytics" burndown/
+   grep -REn "urllib|httpx|requests|telemetry|analytics|0\.0\.0\.0|socket\.socket|create_connection|\.connect\(" burndown/
    ```
    (returns nothing — the only server binds 127.0.0.1, in serve.py.)
 
