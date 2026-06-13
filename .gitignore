@@ -1,0 +1,18 @@
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# burndown's own generated artifacts (never commit a usage report)
+burndown-report.html
+*-report.html
+
+# os
+.DS_Store
