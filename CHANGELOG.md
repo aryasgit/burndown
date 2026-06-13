@@ -1,6 +1,16 @@
 # Changelog
 
-## 0.1.0 — unreleased
+## 0.1.1 — unreleased
+- **Web dashboard redesign** (`burndown serve`): now wears the same dark, editorial
+  palette as the landing page — one green accent, hairline cards, a live pulse,
+  monospace data with tight display numerals. Still fully self-contained (no external
+  fonts or scripts) and 127.0.0.1-only.
+- **Quieter terminal:** `budget`, `scope`, and `currency` print a one-line
+  confirmation instead of re-dumping the whole status readout (run `burndown` to see
+  it). Chaining set-commands no longer floods the screen.
+- Clearer empty-project label: the no-`cwd` bucket reads `(no project)` instead of `—`.
+
+## 0.1.0
 Initial vertical slice.
 - Read Claude Code usage logs (`~/.claude/projects/**/*.jsonl`), privacy-safe and
   read-only; de-dup by message uuid; skip `<synthetic>`.

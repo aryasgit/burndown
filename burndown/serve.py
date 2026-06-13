@@ -82,39 +82,60 @@ def serve(port: int = 8787, open_browser: bool = True) -> None:
 
 _HTML = r"""<!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
-<title>Burndown</title><style>
-:root{color-scheme:dark}
+<title>burndown</title><style>
+:root{
+  --bg:#0a0a0a;--card:#0f0f0f;--line:#1c1c1c;
+  --text:#f4f4f4;--text2:#cfcfcf;--dim:#8a8a8a;--faint:#7a7a7a;
+  --ghost:#2a2a2a;--grn:#3dd07a;--red:#ff6b6b;--amber:#ffbf47;
+  color-scheme:dark}
 *{box-sizing:border-box;margin:0}
-body{background:#0a0c10;color:#e8eaed;font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;max-width:760px;margin:0 auto;padding:32px 20px 60px}
-.top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:22px}
-h1{font-size:20px;letter-spacing:-.02em}.muted{color:#7a828c;font-size:13px}
-.card{background:#12151b;border:1px solid #20252e;border-radius:12px;padding:20px;margin:12px 0}
-.big{font-size:30px;font-weight:700;letter-spacing:-.02em}.sec{color:#7a828c;font-weight:400;font-size:.62em}
-.k{color:#7a828c;font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
-.bar{height:12px;border-radius:6px;background:#20252e;overflow:hidden;margin:12px 0 6px}
-.fill{height:100%;background:#3dd07a;transition:width .4s}
-.row{display:flex;gap:12px}.row>.card{flex:1}
-.split{display:flex;gap:18px;flex-wrap:wrap}
-.pill{font-size:13px}.pill b{font-size:18px;display:block;margin-top:2px}
-.chart{display:flex;align-items:flex-end;gap:4px;height:64px;margin-top:8px}
-.chart div{flex:1;background:#2b6cff;border-radius:3px 3px 0 0;min-height:2px;opacity:.85}
-table{width:100%;border-collapse:collapse}td{padding:6px 0;border-bottom:1px solid #1a1f27;font-size:14px}
-td.n{text-align:right;color:#7fd1a8}
-.warn{color:#ff6b6b}.ok{color:#3dd07a}
-.foot{color:#4a525c;font-size:12px;margin-top:20px}
+body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;
+  font:14px/1.55 ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  max-width:800px;margin:0 auto;padding:40px 22px 64px}
+.tight{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;letter-spacing:-.03em;font-weight:500}
+.top{display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.brand{font-size:20px}.brand b{font-weight:600}
+.sub{color:var(--dim);font-size:12px;margin-left:4px}
+.live{color:var(--grn);font-size:11px;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.live .dot{width:7px;height:7px;border-radius:50%;background:var(--grn);box-shadow:0 0 9px rgba(61,208,122,.6);animation:p 2s ease-in-out infinite}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.35}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:20px 22px;margin:11px 0}
+.k{color:var(--faint);font-size:10.5px;text-transform:uppercase;letter-spacing:.16em;margin-bottom:13px}
+.big{font-size:31px;line-height:1}
+.sec{color:var(--dim);font-weight:400;font-size:.46em;letter-spacing:0}
+.bar{height:8px;border-radius:5px;background:var(--ghost);overflow:hidden;margin:17px 0 9px}
+.fill{height:100%;background:var(--grn);border-radius:5px;transition:width .5s}
+.pct{color:var(--dim);font-size:12px}
+.row{display:flex;gap:11px}.row>.card{flex:1}
+.proj{color:var(--dim);font-size:12px;margin-top:11px}
+.split{display:flex;gap:34px;flex-wrap:wrap;margin-top:2px}
+.pill{font-size:12px;color:var(--dim)}.pill .tag{color:var(--faint)}
+.pill b{font-size:20px;display:block;margin-top:6px;color:var(--text);font-weight:400}
+.chart{display:flex;align-items:flex-end;gap:5px;height:62px;margin-top:4px}
+.chart div{flex:1;background:rgba(61,208,122,.45);border-radius:2px 2px 0 0;min-height:3px;transition:height .4s}
+table{width:100%;border-collapse:collapse}
+td{padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--text2)}
+tr:last-child td{border-bottom:none}
+td.n{text-align:right;color:var(--grn)}
+.foot{color:var(--faint);font-size:11.5px;margin-top:26px;letter-spacing:.02em}
+.ok{color:var(--grn)}.warn{color:var(--red)}
 </style></head><body>
-<div class=top><h1>Burndown</h1><div class=muted id=sub>loading…</div></div>
-<div class=card><div class=k id=spentk>spent this period</div>
-  <div class=big id=spent>—</div>
+<div class=top>
+  <div><span class="brand tight"><b>burndown</b></span><span class=sub id=sub>loading…</span></div>
+  <div class=live><span class=dot></span><span>live · 127.0.0.1</span></div>
+</div>
+<div class=card><div class=k id=spentk>spent / budget</div>
+  <div class="big tight" id=spent>—</div>
   <div class=bar><div class=fill id=fill style=width:0></div></div>
-  <div class=muted id=pct></div></div>
+  <div class=pct id=pct></div></div>
 <div class=row>
-  <div class=card><div class=k>burn rate (last 24h)</div><div class=big id=burn>—</div></div>
-  <div class=card><div class=k>runway</div><div class=big id=runway>—</div><div class=muted id=proj></div></div>
+  <div class=card><div class=k>burn rate · last 24h</div><div class="big tight" id=burn>—</div></div>
+  <div class=card><div class=k>runway</div><div class="big tight" id=runway>—</div><div class=proj id=proj></div></div>
 </div>
 <div class=card><div class=k>credit pool vs interactive</div>
-  <div class=split><div class=pill>programmatic <span class=muted>(credit pool)</span><b id=prog>—</b></div>
-  <div class=pill>interactive <span class=muted>(subscription)</span><b id=inter>—</b></div></div></div>
+  <div class=split><div class=pill>programmatic <span class=tag>(credit pool)</span><b id=prog>—</b></div>
+  <div class=pill>interactive <span class=tag>(subscription)</span><b id=inter>—</b></div></div></div>
 <div class=card><div class=k>last 14 days</div><div class=chart id=chart></div></div>
 <div class=card><div class=k>top projects</div><table id=projects></table></div>
 <div class=foot id=foot></div>

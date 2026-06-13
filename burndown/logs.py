@@ -150,7 +150,7 @@ def iter_events(dirs: list[str]) -> Iterator[Event]:
                     continue
                 cwd = str(o.get("cwd") or "")
                 # Path(...).name handles both / and \ separators (cross-platform).
-                project = (Path(cwd.replace("\\", "/")).name if cwd else "") or "—"
+                project = (Path(cwd.replace("\\", "/")).name if cwd else "") or "(no project)"
                 yield Event(
                     ts=ts,
                     session_id=str(o.get("sessionId") or ""),

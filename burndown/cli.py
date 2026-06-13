@@ -71,8 +71,9 @@ def cmd_budget(cfg, args):
     if args.reset_day:
         cfg.reset_day = max(1, min(28, args.reset_day))
     path = cfgmod.save(cfg)
-    print(f"saved → {path}\n")
-    cmd_status(cfgmod.load(), args)
+    print(f"saved → {path}")
+    print(f"budget · {money(cfg.budget, cfg)} per {cfg.period} (resets day {cfg.reset_day})")
+    print(report.c("run `burndown` to see your runway", "gray"))
 
 
 def cmd_currency(cfg, args):
@@ -90,8 +91,9 @@ def cmd_currency(cfg, args):
         print(f"unknown code {code} — pass a rate: `burndown currency {code} --rate <USD->{code}>`")
         return
     path = cfgmod.save(cfg)
-    print(f"saved → {path}  (showing USD + {code} @ {cfg.fx_rate}; static rate, no live fetch)\n")
-    cmd_status(cfgmod.load(), args)
+    print(f"saved → {path}")
+    print(f"currency · USD + {code} @ {cfg.fx_rate}  (static rate, no live fetch)")
+    print(report.c("run `burndown` to see both side by side", "gray"))
 
 
 def cmd_scope(cfg, args):
@@ -100,9 +102,12 @@ def cmd_scope(cfg, args):
         return
     cfg.scope = args.value
     path = cfgmod.save(cfg)
-    note = " — metering your credit-pool usage" if args.value == "programmatic" else ""
-    print(f"saved → {path}{note}\n")
-    cmd_status(cfgmod.load(), args)
+    desc = {"programmatic": "metering just the credit pool",
+            "interactive": "metering subscription usage",
+            "all": "metering all usage"}.get(cfg.scope, "")
+    print(f"saved → {path}")
+    print(f"scope · {cfg.scope}" + (f" — {desc}" if desc else ""))
+    print(report.c("run `burndown` to see your runway", "gray"))
 
 
 def cmd_config(cfg, args):
