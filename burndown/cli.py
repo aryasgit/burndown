@@ -23,7 +23,7 @@ from .money import KNOWN_FX, money
 
 
 def _snapshot(cfg):
-    snap = build_snapshot(iter_events(cfg.log_dirs), cfg)
+    snap = build_snapshot(iter_events(cfg.log_dirs), cfg, scope=cfg.scope)
     return snap, build_forecast(snap, cfg)
 
 
@@ -81,6 +81,17 @@ def cmd_currency(cfg, args):
     cmd_status(cfgmod.load(), args)
 
 
+def cmd_scope(cfg, args):
+    if not args.value:
+        print(f"scope: {cfg.scope}   (all | programmatic = credit pool | interactive)")
+        return
+    cfg.scope = args.value
+    path = cfgmod.save(cfg)
+    note = " — metering your credit-pool usage" if args.value == "programmatic" else ""
+    print(f"saved → {path}{note}\n")
+    cmd_status(cfgmod.load(), args)
+
+
 def cmd_config(cfg, args):
     files = find_log_files(cfg.log_dirs)
     pricing = "custom (config)" if cfg.pricing else "defaults — estimated, override in config"
@@ -131,6 +142,8 @@ def main(argv=None):
     b.add_argument("--period", choices=["monthly", "weekly", "daily"])
     b.add_argument("--reset-day", dest="reset_day", type=int, help="day-of-month the pool resets")
     sub.add_parser("config", help="show config + which logs are read")
+    sc = sub.add_parser("scope", help="meter all usage, or just the credit pool")
+    sc.add_argument("value", nargs="?", choices=["all", "programmatic", "interactive"])
     cu = sub.add_parser("currency", help="show USD + a second currency (e.g. INR)")
     cu.add_argument("code", nargs="?", help="currency code, e.g. INR")
     cu.add_argument("--rate", type=float, help="USD -> code conversion (static, no live fetch)")
@@ -143,7 +156,7 @@ def main(argv=None):
     cfg = cfgmod.load()
     dispatch = {
         "status": cmd_status, "watch": cmd_watch, "budget": cmd_budget,
-        "config": cmd_config, "currency": cmd_currency, "report": cmd_report,
-        "check": cmd_check,
+        "config": cmd_config, "scope": cmd_scope, "currency": cmd_currency,
+        "report": cmd_report, "check": cmd_check,
     }
     dispatch[args.cmd or "status"](cfg, args)

@@ -47,8 +47,11 @@ def _spark(by_day: dict, days: int = 14) -> str:
 
 def render_status(snap: Snapshot, fc: Forecast, cfg) -> str:
     L: list[str] = []
-    L.append("  " + c("BURNDOWN", "b") +
-             c(f"   {snap.period} period · resets {snap.period_end:%b %d}", "gray"))
+    scope = getattr(cfg, "scope", "all")
+    head = f"   {snap.period} period · resets {snap.period_end:%b %d}"
+    if scope != "all":
+        head += f" · scope: {scope}"
+    L.append("  " + c("BURNDOWN", "b") + c(head, "gray"))
     L.append("")
 
     if fc.budget:
@@ -60,6 +63,11 @@ def render_status(snap: Snapshot, fc: Forecast, cfg) -> str:
                  + c("(set a budget: `burndown budget <amount>`)", "yel"))
     L.append("")
 
+    if snap.spent_programmatic or snap.spent_interactive:
+        L.append("  " + c("programmatic", "cyan") + f" {dual(snap.spent_programmatic, cfg)}  "
+                 + c("(credit pool)", "gray") + "     " + c("interactive", "gray")
+                 + f" {dual(snap.spent_interactive, cfg)}")
+        L.append("")
     L.append(f"  burn rate   {c(rate(fc.burn_per_day, cfg), 'cyan')}   {c('(last 24h)', 'gray')}"
              f"      avg {rate(fc.avg_per_day, cfg)}")
 

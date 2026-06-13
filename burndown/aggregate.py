@@ -47,20 +47,40 @@ class Snapshot:
     by_day: dict = field(default_factory=dict)        # 'YYYY-MM-DD' -> usd
     cost_last_24h: float = 0.0
     cost_last_7d: float = 0.0
+    spent_programmatic: float = 0.0   # period $ split — always tracked, for the breakdown line
+    spent_interactive: float = 0.0
 
 
-def build_snapshot(events, cfg, now: datetime | None = None) -> Snapshot:
+def build_snapshot(events, cfg, now: datetime | None = None, scope: str = "all") -> Snapshot:
+    """Roll events into a period snapshot.
+
+    `scope` filters what the headline (spent / burn / runway) is about:
+      'all' — every event; 'programmatic' — credit-pool usage only;
+      'interactive' — app usage only. The programmatic/interactive period split is
+      ALWAYS tracked (for the breakdown line) regardless of scope.
+    """
     now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     start, end = period_window(cfg.period, cfg.reset_day, now)
     snap = Snapshot(now=now, period=cfg.period, period_start=start, period_end=end)
     t24, t7 = now - timedelta(hours=24), now - timedelta(days=7)
+
+    def in_scope(e) -> bool:
+        return scope == "all" or e.programmatic == (scope == "programmatic")
+
     for e in events:
         c = cost_usd(e.model, e.input, e.output, e.cache_write, e.cache_read, cfg.pricing)
-        if t24 <= e.ts <= now:
-            snap.cost_last_24h += c
-        if t7 <= e.ts <= now:
-            snap.cost_last_7d += c
+        if in_scope(e):
+            if t24 <= e.ts <= now:
+                snap.cost_last_24h += c
+            if t7 <= e.ts <= now:
+                snap.cost_last_7d += c
         if not (start <= e.ts < end):
+            continue
+        if e.programmatic:                 # period split — always, for the breakdown
+            snap.spent_programmatic += c
+        else:
+            snap.spent_interactive += c
+        if not in_scope(e):                # headline rollup respects the scope
             continue
         snap.spent_usd += c
         snap.tokens += e.total_tokens

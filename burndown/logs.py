@@ -43,11 +43,30 @@ class Event:
     cache_read: int
     project: str
     branch: str
+    entrypoint: str
     uuid: str
 
     @property
     def total_tokens(self) -> int:
         return self.input + self.output + self.cache_write + self.cache_read
+
+    @property
+    def programmatic(self) -> bool:
+        """True if this usage is programmatic (Agent SDK / `claude -p` / CI) — i.e.
+        metered against the June-2026 credit pool — vs interactive app usage."""
+        return is_programmatic(self.entrypoint)
+
+
+# Entrypoints that mean "programmatic" (credit-pool) usage. Grounded in real logs:
+# 'sdk-cli' is programmatic; 'claude-desktop' is interactive. Hint-matched so future
+# programmatic entrypoints (github-actions, headless, ...) are caught; anything
+# unrecognized is treated as interactive (won't falsely inflate pool usage).
+_PROGRAMMATIC_HINTS = ("sdk", "cli", "action", "headless", "-p", "print", "api")
+
+
+def is_programmatic(entrypoint: str) -> bool:
+    e = (entrypoint or "").lower()
+    return any(h in e for h in _PROGRAMMATIC_HINTS)
 
 
 def find_log_files(dirs: list[str]) -> list[Path]:
@@ -140,6 +159,7 @@ def iter_events(dirs: list[str]) -> Iterator[Event]:
                     cache_read=_int(usage.get("cache_read_input_tokens")),
                     project=project,
                     branch=str(o.get("gitBranch") or ""),
+                    entrypoint=str(o.get("entrypoint") or ""),
                     uuid=uid,
                 )
 

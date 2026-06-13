@@ -18,9 +18,19 @@ def test_content_blind_by_construction():
     # hold message content — this is the privacy guarantee, enforced structurally.
     assert set(Event.__annotations__) == {
         "ts", "session_id", "model", "input", "output",
-        "cache_write", "cache_read", "project", "branch", "uuid",
+        "cache_write", "cache_read", "project", "branch", "entrypoint", "uuid",
     }
 
 
 def test_missing_dir_is_safe():
     assert list(iter_events(["/nonexistent/path/xyz"])) == []
+
+
+def test_programmatic_classification(log_dir):
+    from burndown.logs import is_programmatic
+    assert is_programmatic("sdk-cli") is True            # Agent SDK / claude -p
+    assert is_programmatic("github-actions") is True
+    assert is_programmatic("claude-desktop") is False    # interactive app
+    evs = {e.uuid: e for e in iter_events([log_dir])}
+    assert evs["A"].programmatic is False
+    assert evs["B"].programmatic is True

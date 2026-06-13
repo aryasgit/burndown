@@ -33,6 +33,7 @@ class Config:
     currency2: str = ""             # secondary display currency, e.g. "INR"
     currency2_symbol: str = ""      # e.g. "₹"
     fx_rate: float = 0.0            # USD -> currency2 (static; no live fetch — ADR-007)
+    scope: str = "all"             # "all" | "programmatic" (credit pool) | "interactive"
     pricing: dict = field(default_factory=dict)   # per-model rate overrides
 
 
@@ -61,6 +62,8 @@ def load() -> Config:
         cfg.currency2_symbol = data["currency2_symbol"]
     if isinstance(data.get("fx_rate"), (int, float)):
         cfg.fx_rate = float(data["fx_rate"])
+    if data.get("scope") in ("all", "programmatic", "interactive"):
+        cfg.scope = data["scope"]
     if isinstance(data.get("pricing"), dict):
         cfg.pricing = data["pricing"]
     return cfg
@@ -82,6 +85,7 @@ def save(cfg: Config) -> Path:
     lines.append(f"budget_unit = {_toml_str(cfg.budget_unit)}")
     lines.append(f"period = {_toml_str(cfg.period)}")
     lines.append(f"reset_day = {cfg.reset_day}")
+    lines.append(f"scope = {_toml_str(cfg.scope)}")
     if cfg.currency2:
         lines.append(f"currency2 = {_toml_str(cfg.currency2)}")
         lines.append(f"currency2_symbol = {_toml_str(cfg.currency2_symbol)}")

@@ -19,16 +19,18 @@ def log_dir(tmp_path):
     ts = "2026-06-10T12:00:00Z"
     lines = [
         {"type": "assistant", "uuid": "A", "timestamp": ts, "sessionId": "s1",
-         "cwd": "/x/proj-a", "gitBranch": "main",
+         "cwd": "/x/proj-a", "gitBranch": "main", "entrypoint": "claude-desktop",
          "message": {"model": "claude-opus-4-8", "content": "SECRET PROMPT — must never be read",
                      "usage": {"input_tokens": 1000, "output_tokens": 2000,
                                "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}},
         # duplicate uuid A -> must be de-duped
         {"type": "assistant", "uuid": "A", "timestamp": ts, "sessionId": "s1", "cwd": "/x/proj-a",
+         "entrypoint": "claude-desktop",
          "message": {"model": "claude-opus-4-8",
                      "usage": {"input_tokens": 1000, "output_tokens": 2000,
                                "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}},
         {"type": "assistant", "uuid": "B", "timestamp": ts, "sessionId": "s1", "cwd": "/x/proj-a",
+         "entrypoint": "sdk-cli",
          "message": {"model": "claude-sonnet-4-6",
                      "usage": {"input_tokens": 500, "output_tokens": 100,
                                "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}},

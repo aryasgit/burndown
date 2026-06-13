@@ -28,7 +28,9 @@ and it never touches your prompts or code (see [SECURITY.md](docs/SECURITY.md)).
 ```bash
 pipx install burndown        # or: pip install burndown
 burndown                     # snapshot of this period
-burndown budget 100          # tell it your monthly pool ($100) → get a runway
+burndown budget 100          # set your monthly credit-pool budget → get a runway
+burndown scope programmatic  # guardian mode: meter just the credit pool
+burndown currency INR        # show INR next to USD (static rate, no live fetch)
 burndown watch               # live dashboard
 ```
 
@@ -60,6 +62,8 @@ No install? From a clone: `python -m burndown` (needs Python 3.11+, nothing else
 | `burndown` / `burndown status` | one-shot snapshot |
 | `burndown watch [--interval 5]` | live dashboard, re-reads logs every few seconds |
 | `burndown budget <amount> [--tokens] [--reset-day N]` | set the budget runway is measured against (dollars, or `--tokens` to skip pricing) |
+| `burndown scope programmatic` | **guardian mode** — meter just the June-2026 credit pool (programmatic usage); `all` / `interactive` also available |
+| `burndown currency INR [--rate R]` | show a second currency next to USD (static rate, no live fetch) |
 | `burndown check` | exit `0` ok · `1` projected-over · `2` over — wire it into your own pre-run hook / CI |
 | `burndown report [--html out.html]` | self-contained local HTML report (opens from `file://`, no server) |
 | `burndown config` | show config + verify which logs are being read |

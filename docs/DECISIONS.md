@@ -96,4 +96,19 @@ regular subscription quota.
 field that should let us split programmatic vs interactive — deferred to v0.2.
 **Why:** total burn is still useful and honest today; the programmatic-only
 filter is the right next refinement for the credit-pool use case.
-**Status:** documented limitation; v0.2 work item.
+**Status:** RESOLVED in v0.2 — see ADR-009.
+
+### ADR-009 — Programmatic vs interactive split via `entrypoint` (scope / guardian)
+**Context:** The June-2026 credit pool meters *programmatic* usage only; users need
+to watch the pool, not their (much larger) interactive burn.
+**Decision:** Classify each billable event by its `entrypoint` (real values:
+`sdk-cli` = programmatic, `claude-desktop` = interactive). Hint-matched
+("sdk", "cli", "action", "headless", "print", "api") so future programmatic
+entrypoints are caught; anything unrecognized defaults to interactive (won't
+falsely inflate pool usage). Add a `scope` config (`all` | `programmatic` |
+`interactive`); `burndown scope programmatic` is **credit-pool guardian** mode —
+headline + runway meter the pool only, with the prog/interactive split always
+shown for context.
+**Why:** makes the credit-pool runway exact, grounded in a real log field.
+**Status:** done; verified on real data (programmatic $8.66 vs interactive
+$6,924 → guardian runway 128 days vs "all" mode 6932%-over-$100).
