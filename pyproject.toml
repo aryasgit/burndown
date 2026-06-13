@@ -12,9 +12,15 @@ requires-python = ">=3.11"
 authors = [{ name = "Aryaman Gupta", email = "rayman3304@gmail.com" }]
 keywords = ["claude", "anthropic", "cost", "tokens", "budget", "cli", "local-first", "claude-code", "credits"]
 classifiers = [
+  "Development Status :: 4 - Beta",
   "Environment :: Console",
+  "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Utilities",
 ]
 # Zero runtime dependencies — by design. The whole tool is auditable in one read
@@ -23,7 +29,9 @@ dependencies = []
 
 [project.urls]
 Homepage = "https://github.com/aryasgit/burndown"
+Source = "https://github.com/aryasgit/burndown"
 Issues = "https://github.com/aryasgit/burndown/issues"
+Changelog = "https://github.com/aryasgit/burndown/blob/main/CHANGELOG.md"
 
 [project.scripts]
 burndown = "burndown.cli:main"
