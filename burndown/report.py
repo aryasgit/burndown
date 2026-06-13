@@ -45,40 +45,53 @@ def _spark(by_day: dict, days: int = 14) -> str:
     return "".join(blocks[min(7, int(v / mx * 7))] for v in series)
 
 
+def _hl(text: str, ok: bool = True) -> str:
+    """The highlighted runway row — a green (or red) left bar + bright text,
+    echoing the landing page's highlighted line. `runway` aligns to column 2 like
+    the other rows. Plain (just indented) when stdout isn't a TTY."""
+    if not _color_on():
+        return "  " + text
+    col = "grn" if ok else "red"
+    return c("▌", col) + " " + c(text, col)
+
+
 def render_status(snap: Snapshot, fc: Forecast, cfg) -> str:
     L: list[str] = []
     scope = getattr(cfg, "scope", "all")
-    head = f"   {snap.period} period · resets {snap.period_end:%b %d}"
+    meta = f"{snap.period} · resets {snap.period_end:%b %d}"
     if scope != "all":
-        head += f" · scope: {scope}"
-    L.append("  " + c("BURNDOWN", "b") + c(head, "gray"))
+        meta += f" · scope: {scope}"
+    L.append("  " + c(meta, "gray"))
     L.append("")
 
+    # spend / budget + gauge
     if fc.budget:
         frac = fc.spent / fc.budget
-        L.append(f"  {money(fc.spent, cfg)} / {money(fc.budget, cfg)}   "
+        L.append(f"  {c(money(fc.spent, cfg), 'b')} {c('/ ' + money(fc.budget, cfg), 'gray')}   "
                  f"{_bar(frac)}  {c(f'{fc.pct_used:.0f}%', 'b')}")
     else:
         L.append(f"  {c(money(fc.spent, cfg), 'b')} spent this period   "
                  + c("(set a budget: `burndown budget <amount>`)", "yel"))
     L.append("")
 
+    # programmatic / interactive split — two annotated lines (matches the landing)
     if snap.spent_programmatic or snap.spent_interactive:
-        L.append("  " + c("programmatic", "cyan") + f" {dual(snap.spent_programmatic, cfg)}  "
-                 + c("(credit pool)", "gray") + "     " + c("interactive", "gray")
-                 + f" {dual(snap.spent_interactive, cfg)}")
+        L.append("  " + c("programmatic", "cyan") + f"  {dual(snap.spent_programmatic, cfg)}  "
+                 + c("(credit pool)", "gray"))
+        L.append("  " + c("interactive", "gray") + f"   {dual(snap.spent_interactive, cfg)}  "
+                 + c("(≈ value at API rates)", "gray"))
         L.append("")
-    L.append(f"  burn rate   {c(rate(fc.burn_per_day, cfg), 'cyan')}   {c('(last 24h)', 'gray')}"
-             f"      avg {rate(fc.avg_per_day, cfg)}")
 
+    # burn rate · highlighted runway · projected
+    L.append(f"  burn rate   {c(rate(fc.burn_per_day, cfg), 'cyan')}  {c('(last 24h)', 'gray')}")
     if fc.budget and fc.runway_days is not None:
         if fc.runway_days <= 0:
-            L.append("  runway      " + c("budget exhausted", "red"))
+            L.append(_hl("runway      budget exhausted", ok=False))
         else:
             within = fc.runway_days < fc.remaining_days
-            tail = c("← before reset!", "red") if within else c("✓ lasts the period", "grn")
-            txt = f"{fc.runway_days:.1f} days  ({fc.exhaustion_date:%b %d})"
-            L.append("  runway      " + c(txt, "red" if within else "grn") + "   " + tail)
+            tail = "← before reset!" if within else "✓ lasts the period"
+            L.append(_hl(f"runway      {fc.runway_days:.1f} days  ({fc.exhaustion_date:%b %d})  {tail}",
+                         ok=not within))
         L.append(f"  projected   {money(fc.projected_period_total, cfg)} by reset"
                  + ("   " + c("OVER BUDGET", "red") if fc.will_exceed else ""))
     L.append("")
@@ -86,13 +99,12 @@ def render_status(snap: Snapshot, fc: Forecast, cfg) -> str:
     if snap.by_project:
         L.append(c("  top projects", "gray"))
         for name, amt in sorted(snap.by_project.items(), key=lambda x: -x[1])[:4]:
-            L.append(f"    {name[:26]:<26} {dual(amt, cfg)}")
-    if snap.by_day:
+            L.append(f"    {name[:24]:<24} {dual(amt, cfg)}")
         L.append("")
-        L.append("  last 14d    " + c(_spark(snap.by_day), "cyan"))
-    L.append("")
-    L.append(c(f"  {snap.events:,} billable msgs · {snap.tokens:,} tokens · "
-               f"100% local, nothing sent anywhere", "gray"))
+
+    if snap.by_day:
+        L.append("  last 14d   " + c(_spark(snap.by_day), "cyan"))
+    L.append(c(f"  {snap.events:,} msgs · {snap.tokens:,} tokens · 100% local, nothing sent", "gray"))
     return "\n".join(L)
 
 

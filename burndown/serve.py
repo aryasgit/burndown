@@ -86,7 +86,7 @@ _HTML = r"""<!doctype html><html lang=en><head><meta charset=utf-8>
 :root{
   --bg:#0a0a0a;--card:#0f0f0f;--line:#1c1c1c;
   --text:#f4f4f4;--text2:#cfcfcf;--dim:#8a8a8a;--faint:#7a7a7a;
-  --ghost:#2a2a2a;--grn:#3dd07a;--red:#ff6b6b;--amber:#ffbf47;
+  --ghost:#23231f;--grn:#3dd07a;--neon:#5cf0a0;--red:#ff6b6b;--amber:#ffbf47;
   color-scheme:dark}
 *{box-sizing:border-box;margin:0}
 body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;
@@ -98,28 +98,29 @@ body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;
 .brand{font-size:20px}.brand b{font-weight:600}
 .sub{color:var(--dim);font-size:12px;margin-left:4px}
 .live{color:var(--grn);font-size:11px;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
-.live .dot{width:7px;height:7px;border-radius:50%;background:var(--grn);box-shadow:0 0 9px rgba(61,208,122,.6);animation:p 2s ease-in-out infinite}
+.live .dot{width:7px;height:7px;border-radius:50%;background:var(--neon);box-shadow:0 0 12px rgba(92,240,160,.85),0 0 4px rgba(92,240,160,1);animation:p 2s ease-in-out infinite}
 @keyframes p{0%,100%{opacity:1}50%{opacity:.35}}
-.card{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:20px 22px;margin:11px 0}
+.card{background:var(--card);border:1px solid #2a2a2a;border-radius:8px;padding:20px 22px;margin:11px 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.03),0 12px 32px -16px rgba(0,0,0,.75)}
 .k{color:var(--faint);font-size:10.5px;text-transform:uppercase;letter-spacing:.16em;margin-bottom:13px}
 .big{font-size:31px;line-height:1}
 .sec{color:var(--dim);font-weight:400;font-size:.46em;letter-spacing:0}
-.bar{height:8px;border-radius:5px;background:var(--ghost);overflow:hidden;margin:17px 0 9px}
-.fill{height:100%;background:var(--grn);border-radius:5px;transition:width .5s}
+.bar{height:8px;border-radius:4px;background:var(--ghost);overflow:hidden;margin:17px 0 9px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)}
+.fill{height:100%;background:linear-gradient(90deg,var(--grn),var(--neon));border-radius:4px;transition:width .5s;box-shadow:0 0 10px rgba(61,208,122,.6),0 0 3px rgba(92,240,160,.9)}
 .pct{color:var(--dim);font-size:12px}
 .row{display:flex;gap:11px}.row>.card{flex:1}
 .proj{color:var(--dim);font-size:12px;margin-top:11px}
 .split{display:flex;gap:34px;flex-wrap:wrap;margin-top:2px}
 .pill{font-size:12px;color:var(--dim)}.pill .tag{color:var(--faint)}
 .pill b{font-size:20px;display:block;margin-top:6px;color:var(--text);font-weight:400}
-.chart{display:flex;align-items:flex-end;gap:5px;height:62px;margin-top:4px}
-.chart div{flex:1;background:rgba(61,208,122,.45);border-radius:2px 2px 0 0;min-height:3px;transition:height .4s}
+.chart{display:flex;align-items:flex-end;gap:5px;height:64px;margin-top:4px}
+.chart div{flex:1;background:linear-gradient(180deg,var(--neon),#2ea866);border-radius:3px 3px 1px 1px;min-height:4px;transition:height .4s;box-shadow:0 0 9px rgba(61,208,122,.22)}
 table{width:100%;border-collapse:collapse}
 td{padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--text2)}
 tr:last-child td{border-bottom:none}
 td.n{text-align:right;color:var(--grn)}
 .foot{color:var(--faint);font-size:11.5px;margin-top:26px;letter-spacing:.02em}
-.ok{color:var(--grn)}.warn{color:var(--red)}
+.ok{color:var(--grn);text-shadow:0 0 18px rgba(61,208,122,.55)}.warn{color:var(--red);text-shadow:0 0 18px rgba(255,107,107,.45)}
+td.n{text-shadow:0 0 14px rgba(61,208,122,.35)}
 </style></head><body>
 <div class=top>
   <div><span class="brand tight"><b>burndown</b></span><span class=sub id=sub>loading…</span></div>
@@ -150,7 +151,7 @@ function render(d){D=d;
   document.getElementById('spent').innerHTML=d.budget?dual(d.spent)+' <span class=sec>/ '+dual(d.budget)+'</span>':dual(d.spent);
   let frac=d.budget?Math.min(d.spent/d.budget,1):0;
   let f=document.getElementById('fill');f.style.width=(frac*100)+'%';
-  f.style.background=frac>=1?'#ff6b6b':frac>=.8?'#ffbf47':'#3dd07a';
+  f.style.background=frac>=1?'linear-gradient(90deg,#ff6b6b,#ff9b9b)':frac>=.8?'linear-gradient(90deg,#ffbf47,#ffd98a)':'linear-gradient(90deg,#3dd07a,#5cf0a0)';
   document.getElementById('pct').innerHTML=d.budget?(d.pct.toFixed(0)+'% used'):'<span class=muted>set a budget with: burndown budget &lt;amount&gt;</span>';
   document.getElementById('burn').innerHTML=dual(d.burn_per_day)+' <span class=sec>/day</span>';
   let rw=document.getElementById('runway');
