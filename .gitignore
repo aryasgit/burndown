@@ -16,6 +16,8 @@ burndown-report.html
 
 # internal strategy / session-context doc (never ship)
 BURNDOWN_STATUS.md
+# launch posts / runbook (internal, never ship)
+LAUNCH_KIT.md
 
 # os
 .DS_Store
