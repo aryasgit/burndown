@@ -1017,11 +1017,11 @@
           <div class="cap">Audit it yourself</div>
           <div class="term-row">
             <span class="pmpt">$</span>
-            <span class="cmd">grep -REn "urllib|httpx|requests|telemetry|analytics|0\.0\.0\.0|socket\.socket|create_connection|\.connect\(" burndown/</span>
+            <span class="cmd">grep -rnE "http\.server|socket\.socket|urlopen|httpx|requests|create_connection" burndown/</span>
             <button type="button" class="copy" aria-label="Copy command to clipboard">copy</button>
           </div>
           <div class="install-meta">
-            <div><span class="k">Result</span>Nothing — the only socket binds 127.0.0.1. The whole tool is auditable in one read.</div>
+            <div><span class="k">Result</span>One line — <code>http.server</code> in serve.py (the opt-in 127.0.0.1 dashboard). The whole tool is auditable in one read.</div>
             <div><span class="k">Threat model</span><a href="https://github.com/aryasgit/burndown/blob/main/docs/SECURITY.md" target="_blank">docs/SECURITY.md</a> · <a href="https://github.com/aryasgit/burndown/blob/main/docs/DECISIONS.md" target="_blank">ADRs</a></div>
           </div>
         </div>

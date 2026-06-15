@@ -36,7 +36,7 @@ burndown watch               # live terminal dashboard …
 burndown serve               # … or a web dashboard at http://127.0.0.1:8787
 ```
 
-No install? From a clone: `python -m burndown` (needs Python 3.11+, nothing else).
+No install? From a clone: `python -m burndown` (needs Python 3.10+, nothing else).
 
 ```
   BURNDOWN   monthly period · resets Jul 01
@@ -80,6 +80,16 @@ configurable per-model table, rolls them into your current billing period,
 computes burn rate from the **last 24 hours**, and projects when you'll hit your
 budget.
 
+## vs ccusage
+
+`ccusage` and similar tools are excellent *statements* — they read the same local
+Claude Code logs and tell you, accurately, what you've **already** spent. Burndown
+answers the other question: *will you make it to the reset?* It turns the same logs
+into a **rate and a runway** — how fast you're burning now, the projected total by
+your reset, and a check that fires *before* you overspend. And `burndown scope
+programmatic` meters only the new June-2026 credit pool (SDK / headless / CI),
+separate from your interactive sessions — the pool that can actually run dry mid-month.
+
 ## Honest limitations
 
 - **Pricing is estimated and configurable.** Default per-model rates are
@@ -95,9 +105,10 @@ budget.
 ## Trust
 
 Zero dependencies · no outbound network (the optional dashboard is loopback-only) · read-only · content-blind · cross-platform (macOS/Linux/Windows) · MIT.
-Verify it yourself in one line:
+Verify it yourself — the entire network surface is a single import:
 ```bash
-grep -REn "urllib|httpx|requests|telemetry|analytics|0\.0\.0\.0|socket\.socket|create_connection|\.connect\(" burndown/   # → nothing (the only socket binds 127.0.0.1)
+grep -rnE "http\.server|socket\.socket|urlopen|httpx|requests|create_connection" burndown/
+# → one line: http.server in serve.py (the opt-in 127.0.0.1 dashboard). Nothing else.
 ```
 
 Decisions are logged in [docs/DECISIONS.md](docs/DECISIONS.md); the threat model

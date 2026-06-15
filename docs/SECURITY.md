@@ -15,9 +15,10 @@ never even reads.**
    network, off by default, serving a fully self-contained page. Verify there's
    nothing outbound and no public bind:
    ```
-   grep -REn "urllib|httpx|requests|telemetry|analytics|0\.0\.0\.0|socket\.socket|create_connection|\.connect\(" burndown/
+   grep -rnE "http\.server|socket\.socket|urlopen|httpx|requests|create_connection" burndown/
    ```
-   (returns nothing — the only server binds 127.0.0.1, in serve.py.)
+   (returns a single line — the `http.server` import in serve.py, which is the opt-in
+   loopback dashboard bound to 127.0.0.1. That is the whole network surface.)
 
 2. **Content-blind.** The parser (`burndown/logs.py`) pulls only token-usage
    integers and minimal metadata: model name, timestamp, session id, the project
