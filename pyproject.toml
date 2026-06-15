@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "burndown"
-version = "0.1.1"
+version = "0.1.2"
 description = "A local, real-time cockpit for your Claude credit burn — burn rate, runway forecast, and budget alerts. Zero dependencies, nothing leaves your machine."
 readme = "README.md"
 license = "MIT"

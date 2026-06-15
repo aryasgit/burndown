@@ -1,5 +1,5 @@
 """Config load/save + the zero-dep TOML fallback used on Python 3.10 (no tomllib)."""
-from burndown.config import Config, load, save, _loads_min
+from burndown.config import Config, config_path, load, save, _loads_min
 
 
 def test_fallback_parses_our_format():
@@ -46,3 +46,14 @@ def test_save_load_roundtrip(tmp_path, monkeypatch):
     assert got.currency2 == "INR"
     assert got.fx_rate == 83.0
     assert got.pricing["opus"] == [15.0, 75.0, 18.75, 1.5]
+
+
+def test_config_written_as_utf8(tmp_path, monkeypatch):
+    # The config carries non-ASCII currency symbols (₹, €, £). It must be written
+    # and read as UTF-8 on every OS — not the platform default (cp1252 on Windows,
+    # which can't encode ₹ and used to crash `burndown currency INR` there).
+    monkeypatch.setenv("APPDATA", str(tmp_path / "appdata"))
+    save(Config(currency2="INR", currency2_symbol="₹", fx_rate=83.0))
+    raw = config_path().read_bytes()
+    assert "₹" in raw.decode("utf-8")          # round-trips as UTF-8
+    assert b"\xe2\x82\xb9" in raw               # the literal UTF-8 bytes for ₹

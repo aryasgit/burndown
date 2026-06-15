@@ -1,6 +1,13 @@
 # Changelog
 
-## 0.1.1 — unreleased
+## 0.1.2 — unreleased
+- **Windows fix:** force UTF-8 on all file I/O — config read/write, log reading, and
+  the HTML report. These used the platform default encoding (cp1252 on Windows), which
+  can't encode currency symbols like `₹`, so `burndown currency INR` could crash and
+  logs containing Unicode could be misread. Correct on every OS now; CI is green across
+  macOS / Linux / Windows × Python 3.10–3.13.
+
+## 0.1.1
 - **Web dashboard redesign** (`burndown serve`): now wears the landing page's dark,
   editorial palette — sharper cards with depth, a neon-gradient gauge and bar chart
   with glow, a live pulse, monospace data with tight display numerals. Still fully

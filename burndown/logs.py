@@ -114,7 +114,7 @@ def iter_events(dirs: list[str]) -> Iterator[Event]:
     seen: set[str] = set()
     for path in find_log_files(dirs):
         try:
-            fh = path.open("r", errors="ignore")
+            fh = path.open("r", encoding="utf-8", errors="ignore")
         except OSError:
             continue
         with fh:

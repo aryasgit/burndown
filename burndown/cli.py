@@ -125,7 +125,7 @@ def cmd_config(cfg, args):
 def cmd_report(cfg, args):
     snap, fc = _snapshot(cfg)
     out = args.html or "burndown-report.html"
-    with open(out, "w") as f:
+    with open(out, "w", encoding="utf-8") as f:
         f.write(report.render_html(snap, fc, cfg))
     print(f"wrote {out}")
 

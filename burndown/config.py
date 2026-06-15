@@ -127,7 +127,7 @@ def load() -> Config:
     if not p.is_file():
         return cfg
     try:
-        data = _loads(p.read_text())
+        data = _loads(p.read_text(encoding="utf-8"))
     except (OSError, _TOML_ERROR):
         return cfg
     if isinstance(data.get("log_dirs"), list) and data["log_dirs"]:
@@ -180,7 +180,7 @@ def save(cfg: Config) -> Path:
         for k, v in cfg.pricing.items():
             if isinstance(v, (list, tuple)):
                 lines.append(f"{k} = [" + ", ".join(str(float(x)) for x in v) + "]")
-    p.write_text("\n".join(lines) + "\n")
+    p.write_text("\n".join(lines) + "\n", encoding="utf-8")
     try:
         os.chmod(p, 0o600)
     except OSError:
